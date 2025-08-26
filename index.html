@@ -6,6 +6,7 @@ PLAN (pseudocode)
 - Replace prompt-based color change: clicking "Modifier la couleur" focuses/triggers the color input.
 - Store colors as normalized HEX (#RRGGBB) in localStorage; convert from computed rgb() when needed.
 - When creating/restoring nodes, use HEX values to avoid rgb()/var() mismatches.
+- Auto-fit label font-size so text stays inside circles (binary search), run on create/rename/restore/reset/resize.
 -->
 
 <!DOCTYPE html>
@@ -50,7 +51,7 @@ PLAN (pseudocode)
     }
     .node:active { cursor: grabbing; }
     .node:hover { filter: brightness(1.05); }
-    .node .label { pointer-events: none; line-height: 1.1; }
+    .node .label { pointer-events: none; line-height: 1.1; width: 100%; max-width: 100%; overflow: hidden; word-break: break-word; hyphens: auto; }
 
     /* Context menu */
     .menu {
@@ -168,6 +169,47 @@ PLAN (pseudocode)
       return line;
     }
 
+    // --- Text autosize helpers ---
+    function fitLabelToNode(node) {
+      const label = node.querySelector('.label');
+      if (!label) return;
+      // ensure measurement constraints
+      label.style.width = '100%';
+      label.style.maxWidth = '100%';
+      label.style.whiteSpace = 'normal';
+      label.style.overflow = 'hidden';
+      label.style.wordBreak = 'break-word';
+
+      const cs = getComputedStyle(node);
+      const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      const contentW = Math.max(0, node.clientWidth - padX);
+      const contentH = Math.max(0, node.clientHeight - padY);
+
+      let low = 6; // min readable
+      let high = Math.max(6, Math.floor(contentH));
+      let best = low;
+
+      // quick guard for empty
+      if (!label.textContent || !label.textContent.trim()) {
+        label.style.fontSize = Math.min(16, high) + 'px';
+        return;
+      }
+
+      // binary search for largest font that fits both width and height
+      for (let i = 0; i < 12 && low <= high; i++) { // 12 iterations are enough
+        const mid = Math.floor((low + high) / 2);
+        label.style.fontSize = mid + 'px';
+        const fits = label.scrollWidth <= contentW && label.scrollHeight <= contentH;
+        if (fits) { best = mid; low = mid + 1; } else { high = mid - 1; }
+      }
+      label.style.fontSize = best + 'px';
+    }
+
+    function fitAllLabels() {
+      document.querySelectorAll('.node').forEach(fitLabelToNode);
+    }
+
     function enableDrag(node) {
       if (node._dragEnabled) return; // avoid duplicate listeners
       let offsetX = 0, offsetY = 0;
@@ -231,6 +273,7 @@ PLAN (pseudocode)
       span.className = 'label';
       span.textContent = 'Grand Cercle';
       node.appendChild(span);
+      fitLabelToNode(node);
 
       stage.appendChild(node);
       enableDrag(node);
@@ -263,6 +306,7 @@ PLAN (pseudocode)
       span.className = 'label';
       span.textContent = 'Petit Cercle';
       node.appendChild(span);
+      fitLabelToNode(node);
 
       stage.appendChild(node);
       enableDrag(node);
@@ -331,7 +375,7 @@ PLAN (pseudocode)
       else if (action === 'rename') {
         const label = currentNode.querySelector('.label');
         const name = prompt('Entrez un nouveau nom :', label.textContent.trim());
-        if (name) { label.textContent = name; saveState(); }
+        if (name) { label.textContent = name; fitLabelToNode(currentNode); saveState(); }
         closeMenu();
         return;
       }
@@ -393,6 +437,7 @@ PLAN (pseudocode)
         mainNode.style.left = 'calc(50% - 55px)';
         mainNode.style.top = 'calc(50% - 55px)';
         mainNode.querySelector('.label').textContent = 'Cercle Principal';
+        fitLabelToNode(mainNode);
         mainNode.style.backgroundColor = 'var(--primary)';
         idCounter = 1;
         saveState();
@@ -406,7 +451,7 @@ PLAN (pseudocode)
     });
 
     // Keep lines aligned on resize
-    window.addEventListener('resize', updateAllLines);
+    window.addEventListener('resize', () => { updateAllLines(); fitAllLabels(); });
 
     // --- Color helpers ---
     function normalizeHex(input) {
@@ -481,6 +526,7 @@ PLAN (pseudocode)
         node.style.backgroundColor = col;
         node.innerHTML = '<span class="label"></span>';
         node.querySelector('.label').textContent = n.text || '';
+        fitLabelToNode(node);
         if (!node.id) node.id = '';
         byId[n.id] = node;
       });
@@ -494,6 +540,7 @@ PLAN (pseudocode)
 
       // Enable drag for main if not already
       enableDrag(mainNode);
+    fitLabelToNode(mainNode);
 
       // Rebuild edges
       (data?.edges || []).forEach(e => {
