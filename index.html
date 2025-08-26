@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Espace de Travail — amélioré</title>
+  <title>Espace de Travail — saisie hex</title>
   <style>
     :root {
       --bg: #f5f6f8;
@@ -48,7 +48,7 @@
       width: 110px;
       height: 110px;
       border-radius: 9999px;
-      background: var(--primary);
+      background-color: var(--primary);
       color: #fff;
       display: flex;
       align-items: center;
@@ -122,7 +122,7 @@
 <body>
   <div id="stage" class="stage" aria-label="Espace de travail">
     <svg id="wires" aria-hidden="true"></svg>
-    <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px); background: var(--primary);">
+    <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px);">
       <span class="label">Cercle Principal</span>
     </div>
   </div>
@@ -144,20 +144,12 @@
     <input id="fileInput" type="file" accept="application/json" style="display:none" />
   </div>
 
-  <!-- Input color : minuscule & invisible mais à l'écran (compatibilité showPicker / click) -->
-  <input
-    id="colorPicker"
-    type="color"
-    style="position:fixed; width:1px; height:1px; opacity:0; pointer-events:none;"
-  />
-
   <script>
     // --- State & Elements
     const stage = document.getElementById('stage');
     const svg = document.getElementById('wires');
     const menu = document.getElementById('menu');
     const mainNode = document.getElementById('main-node');
-    const colorPicker = document.getElementById('colorPicker');
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
     const resetBtn = document.getElementById('resetBtn');
@@ -268,7 +260,7 @@
       node.style.top = top + 'px';
       node.style.width = baseW + 'px';
       node.style.height = baseH + 'px';
-      node.style.background = getComputedStyle(target).backgroundColor || 'var(--primary)';
+      node.style.backgroundColor = getComputedStyle(target).backgroundColor || 'var(--primary)';
 
       const span = document.createElement('span');
       span.className = 'label';
@@ -300,7 +292,7 @@
       node.style.top = top + 'px';
       node.style.width = w + 'px';
       node.style.height = h + 'px';
-      node.style.background = getComputedStyle(target).backgroundColor || 'var(--primary)';
+      node.style.backgroundColor = getComputedStyle(target).backgroundColor || 'var(--primary)';
 
       const span = document.createElement('span');
       span.className = 'label';
@@ -355,33 +347,19 @@
         return;
       }
       else if (action === 'color') {
-        // --- Sélecteur de couleur : robuste et réactif
-        const node = currentNode; // capture locale
-
-        const initial = rgbToHex(getComputedStyle(node).backgroundColor) || '#cc0000';
-        colorPicker.value = initial;
-
-        const apply = () => {
-          node.style.backgroundColor = colorPicker.value; // MAJ précise
-        };
-
-        const cleanup = () => {
-          colorPicker.removeEventListener('input', onInput);
-          colorPicker.removeEventListener('change', onChange);
-        };
-
-        const onInput = () => { apply(); };                     // aperçu en direct
-        const onChange = () => { apply(); saveState(); cleanup(); }; // validation + sauvegarde
-
-        colorPicker.addEventListener('input', onInput);
-        colorPicker.addEventListener('change', onChange);
-
-        if (typeof colorPicker.showPicker === 'function') {
-          colorPicker.showPicker();
-        } else {
-          colorPicker.click();
+        // --- Fenêtre simple : saisie d'un code hex ---
+        const node = currentNode;
+        const initial = toHex(getComputedStyle(node).backgroundColor) || '#CC0000';
+        const val = prompt('Entrez un code couleur au format hex (#RRGGBB) :', initial);
+        if (val == null) { closeMenu(); return; }
+        const hex = normalizeHex(String(val).trim());
+        if (!hex) {
+          alert('Code couleur invalide. Exemple valide : #CC0000');
+          closeMenu();
+          return;
         }
-
+        node.style.backgroundColor = hex;
+        saveState();
         closeMenu();
         return;
       }
@@ -405,7 +383,6 @@
         closeMenu();
         return;
       }
-      // Si clic sur un bouton sans data-action (ex. swatch), ne rien faire ici
     });
 
     // Toolbar actions
@@ -442,7 +419,7 @@
         mainNode.style.left = 'calc(50% - 55px)';
         mainNode.style.top = 'calc(50% - 55px)';
         mainNode.querySelector('.label').textContent = 'Cercle Principal';
-        mainNode.style.background = 'var(--primary)';
+        mainNode.style.backgroundColor = 'var(--primary)';
         idCounter = 1;
         saveState();
         updateAllLines();
@@ -457,11 +434,30 @@
     // Keep lines aligned on resize
     window.addEventListener('resize', updateAllLines);
 
-    // Color helper
-    function rgbToHex(rgb) {
-      const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    // --- Color helpers ---
+    function normalizeHex(input) {
+      if (!input) return null;
+      // #RRGGBB or RRGGBB
+      let m = String(input).match(/^#?([0-9a-fA-F]{6})$/);
+      if (m) return '#' + m[1].toUpperCase();
+      // #RGB or RGB -> expand
+      m = String(input).match(/^#?([0-9a-fA-F]{3})$/);
+      if (m) return '#' + m[1].split('').map(c => (c + c)).join('').toUpperCase();
+      return null;
+    }
+
+    function toHex(input) {
+      if (!input) return null;
+      const hexMatch = String(input).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (hexMatch) {
+        const hex = hexMatch[1];
+        if (hex.length === 3) return '#' + hex.split('').map(c => c + c).join('').toUpperCase();
+        return '#' + hex.toUpperCase();
+      }
+      const m = String(input).match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i);
       if (!m) return null;
-      return '#' + [m[1], m[2], m[3]].map(v => Number(v).toString(16).padStart(2, '0')).join('');
+      const [r,g,b] = [m[1], m[2], m[3]].map(v => Math.max(0, Math.min(255, Math.round(parseFloat(v)))));
+      return '#' + [r,g,b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
 
     // Persistence
@@ -509,7 +505,7 @@
         node.style.top = n.top;
         if (n.w) node.style.width  = n.w + 'px';
         if (n.h) node.style.height = n.h + 'px';
-        node.style.background = n.color || 'var(--primary)';
+        node.style.backgroundColor = n.color || 'var(--primary)';
         node.innerHTML = '<span class="label"></span>';
         node.querySelector('.label').textContent = n.text || '';
         if (!node.id) node.id = '';
