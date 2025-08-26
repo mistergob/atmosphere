@@ -144,7 +144,12 @@
     <input id="fileInput" type="file" accept="application/json" style="display:none" />
   </div>
 
-  <input id="colorPicker" type="color" style="position:fixed; left:-9999px; opacity:0" />
+  <!-- Input color : minuscule & invisible mais à l'écran (compatibilité showPicker / click) -->
+  <input
+    id="colorPicker"
+    type="color"
+    style="position:fixed; width:1px; height:1px; opacity:0; pointer-events:none;"
+  />
 
   <script>
     // --- State & Elements
@@ -217,7 +222,6 @@
         currentNode = node;
         openMenu(null); // ensure menu closes while dragging
         node.setPointerCapture(e.pointerId);
-        const s = stageRect();
         const rect = node.getBoundingClientRect();
         offsetX = e.clientX - rect.left;
         offsetY = e.clientY - rect.top;
@@ -231,7 +235,7 @@
           updateLinesFor(node);
         };
 
-        const onUp = (ev) => {
+        const onUp = () => {
           node.releasePointerCapture(e.pointerId);
           node.removeEventListener('pointermove', onMove);
           node.removeEventListener('pointerup', onUp);
@@ -277,6 +281,7 @@
       saveState();
       return node;
     }
+
     function addNodeNearScaled(target, scale = 0.5) {
       const rect = target.getBoundingClientRect();
       const s = stageRect();
@@ -329,6 +334,7 @@
       menu.style.display = 'none';
       menu.setAttribute('aria-hidden', 'true');
     }
+
     // Menu actions
     menu.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
@@ -349,13 +355,33 @@
         return;
       }
       else if (action === 'color') {
-        // Version simple et fiable (comme le premier code)
-        colorPicker.value = rgbToHex(getComputedStyle(currentNode).backgroundColor) || '#cc0000';
-        colorPicker.onchange = () => {
-          currentNode.style.background = colorPicker.value;
-          saveState();
+        // --- Sélecteur de couleur : robuste et réactif
+        const node = currentNode; // capture locale
+
+        const initial = rgbToHex(getComputedStyle(node).backgroundColor) || '#cc0000';
+        colorPicker.value = initial;
+
+        const apply = () => {
+          node.style.backgroundColor = colorPicker.value; // MAJ précise
         };
-        colorPicker.click();
+
+        const cleanup = () => {
+          colorPicker.removeEventListener('input', onInput);
+          colorPicker.removeEventListener('change', onChange);
+        };
+
+        const onInput = () => { apply(); };                     // aperçu en direct
+        const onChange = () => { apply(); saveState(); cleanup(); }; // validation + sauvegarde
+
+        colorPicker.addEventListener('input', onInput);
+        colorPicker.addEventListener('change', onChange);
+
+        if (typeof colorPicker.showPicker === 'function') {
+          colorPicker.showPicker();
+        } else {
+          colorPicker.click();
+        }
+
         closeMenu();
         return;
       }
@@ -437,6 +463,7 @@
       if (!m) return null;
       return '#' + [m[1], m[2], m[3]].map(v => Number(v).toString(16).padStart(2, '0')).join('');
     }
+
     // Persistence
     function buildState() {
       const nodes = Array.from(stage.querySelectorAll('.node')).map(n => ({
