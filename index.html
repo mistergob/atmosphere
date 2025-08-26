@@ -7,6 +7,7 @@ PLAN (pseudocode)
 - Store colors as normalized HEX (#RRGGBB) in localStorage; convert from computed rgb() when needed.
 - When creating/restoring nodes, use HEX values to avoid rgb()/var() mismatches.
 - Auto-fit label font-size so text stays inside circles (binary search), run on create/rename/restore/reset/resize.
+- Add font controls in context menu: family select, max size, and style toggles (bold/italic/underline). Persist per node.
 -->
 
 <!DOCTYPE html>
@@ -64,6 +65,10 @@ PLAN (pseudocode)
     .menu .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid #e5e7eb; }
     .menu .row label { font-size: 12px; color: var(--muted); }
     .menu .row input[type="color"] { width: 36px; height: 28px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0; background: transparent; cursor: pointer; }
+    .menu select, .menu input[type="number"] { height: 28px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0 8px; background: transparent; }
+    .menu .toggle-group { display: flex; gap: 8px; }
+    .menu .toggle { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; }
+    .menu .toggle[aria-pressed="true"] { background: #111827; color: #fff; }
 
     /* Toolbar */
     .toolbar { position: fixed; right: 16px; top: 16px; display: flex; gap: 8px; background: var(--card); border: 1px solid #e5e7eb; border-radius: 14px; padding: 8px; box-shadow: 0 8px 24px var(--ring); z-index: 60; }
@@ -79,19 +84,41 @@ PLAN (pseudocode)
   <div id="stage" class="stage" aria-label="Espace de travail">
     <svg id="wires" aria-hidden="true"></svg>
     <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px);">
-      <span class="label">Cercle Principal</span>
+      <span class="label">Cercle principal</span>
     </div>
   </div>
 
   <!-- Context menu -->
   <div id="menu" class="menu" role="menu" aria-hidden="true">
-    <button data-action="add">➕ Grand Cercle (même taille)</button>
-    <button data-action="addSmall">➕ Petit Cercle</button>
+    <button data-action="add">➕ Cercle principal</button>
+    <button data-action="addSmall">➕ Cercle secondaire</button>
     <button data-action="color">🎨 Modifier la couleur</button>
     <div class="row" aria-label="Sélecteur de couleur">
       <label for="colorPicker">Couleur</label>
       <input id="colorPicker" type="color" value="#CC0000" />
-      <button data-action="applyAll" title="Appliquer cette couleur à tous les cercles">Appliquer à tous</button>
+    </div>
+    <div class="row" aria-label="Police">
+      <label for="fontSelect">Police</label>
+      <select id="fontSelect">
+        <option value="system-ui">Système</option>
+        <option value="Arial">Arial</option>
+        <option value="Roboto">Roboto</option>
+        <option value="Georgia">Georgia</option>
+        <option value="'Times New Roman'">Times New Roman</option>
+        <option value="'Courier New'">Courier New</option>
+      </select>
+    </div>
+    <div class="row" aria-label="Taille de police">
+      <label for="fontSizeMax">Taille max</label>
+      <input id="fontSizeMax" type="number" min="6" max="72" step="1" value="32" />
+    </div>
+    <div class="row" aria-label="Style de texte">
+      <label>Style</label>
+      <div class="toggle-group">
+        <button type="button" id="boldBtn" class="toggle" aria-pressed="true">Gras</button>
+        <button type="button" id="italicBtn" class="toggle" aria-pressed="false">Italique</button>
+        <button type="button" id="underlineBtn" class="toggle" aria-pressed="false">Souligné</button>
+      </div>
     </div>
     <button data-action="rename">✏️ Renommer le cercle</button>
     <button data-action="delete">🗑️ Supprimer le cercle</button>
@@ -116,13 +143,18 @@ PLAN (pseudocode)
     const resetBtn = document.getElementById('resetBtn');
     const fileInput = document.getElementById('fileInput');
     const colorPicker = document.getElementById('colorPicker');
+    const fontSelect = document.getElementById('fontSelect');
+    const fontSizeMax = document.getElementById('fontSizeMax');
+    const boldBtn = document.getElementById('boldBtn');
+    const italicBtn = document.getElementById('italicBtn');
+    const underlineBtn = document.getElementById('underlineBtn');
 
     let currentNode = null;
     let idCounter = 1; // will be overridden by saved state if any
 
     // Tailles fixes pour deux types de cercles
-    const BIG_SIZE = 110;  // Grand Cercle
-    const SMALL_SIZE = 55; // Petit Cercle
+    const BIG_SIZE = 110;  // Cercle principal
+    const SMALL_SIZE = 55; // Cercle secondaire
 
     // --- Utilities
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
@@ -186,8 +218,9 @@ PLAN (pseudocode)
       const contentW = Math.max(0, node.clientWidth - padX);
       const contentH = Math.max(0, node.clientHeight - padY);
 
+      const cap = parseFloat(node.dataset.maxFont);
       let low = 6; // min readable
-      let high = Math.max(6, Math.floor(contentH));
+      let high = Math.max(6, Math.floor(Math.min(contentH, Number.isFinite(cap) ? cap : contentH)));
       let best = low;
 
       // quick guard for empty
@@ -245,8 +278,7 @@ PLAN (pseudocode)
 
       // Open custom menu on right-click + left-click
       node.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, node); });
-      node.addEventListener('click', (e) => { openMenu(e, node); });
-
+      
       node._dragEnabled = true;
     }
 
@@ -271,7 +303,7 @@ PLAN (pseudocode)
 
       const span = document.createElement('span');
       span.className = 'label';
-      span.textContent = 'Grand Cercle';
+      span.textContent = 'Cercle principal';
       node.appendChild(span);
       fitLabelToNode(node);
 
@@ -304,7 +336,7 @@ PLAN (pseudocode)
 
       const span = document.createElement('span');
       span.className = 'label';
-      span.textContent = 'Petit Cercle';
+      span.textContent = 'Cercle secondaire';
       node.appendChild(span);
       fitLabelToNode(node);
 
@@ -326,6 +358,25 @@ PLAN (pseudocode)
       // sync color picker with the current node color
       const initialHex = toHex(getComputedStyle(currentNode).backgroundColor) || '#CC0000';
       colorPicker.value = initialHex;
+
+      // sync font family
+      const labelEl = currentNode.querySelector('.label');
+      const famInline = labelEl.style.fontFamily;
+      const famOpt = famInline && Array.from(fontSelect.options).some(o => o.value === famInline) ? famInline : 'system-ui';
+      fontSelect.value = famOpt;
+
+      // sync max font size cap
+      fontSizeMax.value = currentNode.dataset.maxFont || '32';
+
+      // sync style toggles
+      const csLabel = getComputedStyle(labelEl);
+      const fw = parseInt(csLabel.fontWeight, 10);
+      const isBold = (fw >= 600) || csLabel.fontWeight === 'bold';
+      const isItalic = csLabel.fontStyle === 'italic';
+      const isUnderline = (csLabel.textDecorationLine || csLabel.textDecoration || '').includes('underline');
+      boldBtn.setAttribute('aria-pressed', isBold ? 'true' : 'false');
+      italicBtn.setAttribute('aria-pressed', isItalic ? 'true' : 'false');
+      underlineBtn.setAttribute('aria-pressed', isUnderline ? 'true' : 'false');
 
       const mRect = menu.getBoundingClientRect();
       const vw = window.innerWidth, vh = window.innerHeight;
@@ -356,7 +407,7 @@ PLAN (pseudocode)
       else if (action === 'addSmall') {
         addNodeNearScaled(currentNode, 0.5);
         const lbl = currentNode.querySelector('.label');
-        if (lbl) lbl.textContent = 'Grand Cercle';
+        if (lbl) lbl.textContent = 'Cercle principal';
         closeMenu();
         return;
       }
@@ -366,12 +417,7 @@ PLAN (pseudocode)
         colorPicker.click();
         return; // keep menu open while picking
       }
-      else if (action === 'applyAll') {
-        const hex = normalizeHex(colorPicker.value) || '#CC0000';
-        document.querySelectorAll('.node').forEach(n => { n.style.backgroundColor = hex; });
-        saveState();
-        return;
-      }
+      
       else if (action === 'rename') {
         const label = currentNode.querySelector('.label');
         const name = prompt('Entrez un nouveau nom :', label.textContent.trim());
@@ -398,6 +444,65 @@ PLAN (pseudocode)
     colorPicker.addEventListener('input', (e) => {
       if (!currentNode) return;
       const hex = normalizeHex(e.target.value);
+
+    // Font family
+    fontSelect?.addEventListener('change', (e) => {
+      if (!currentNode) return;
+      const label = currentNode.querySelector('.label');
+      label.style.fontFamily = e.target.value;
+      fitLabelToNode(currentNode);
+      saveState();
+    });
+
+    // Max font size cap
+    fontSizeMax?.addEventListener('input', (e) => {
+      if (!currentNode) return;
+      const v = parseFloat(e.target.value);
+      if (!Number.isFinite(v)) return;
+      const min = parseFloat(e.target.min) || 6;
+      const max = parseFloat(e.target.max) || 72;
+      const clamped = Math.max(min, Math.min(max, v));
+      currentNode.dataset.maxFont = String(clamped);
+      fitLabelToNode(currentNode);
+      saveState();
+    });
+
+    // Style toggles
+    const togglePressed = (btn) => btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+
+    boldBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!currentNode) return;
+      togglePressed(boldBtn);
+      const on = boldBtn.getAttribute('aria-pressed') === 'true';
+      const label = currentNode.querySelector('.label');
+      label.style.fontWeight = on ? '700' : '400';
+      fitLabelToNode(currentNode);
+      saveState();
+    });
+
+    italicBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!currentNode) return;
+      togglePressed(italicBtn);
+      const on = italicBtn.getAttribute('aria-pressed') === 'true';
+      const label = currentNode.querySelector('.label');
+      label.style.fontStyle = on ? 'italic' : 'normal';
+      fitLabelToNode(currentNode);
+      saveState();
+    });
+
+    underlineBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!currentNode) return;
+      togglePressed(underlineBtn);
+      const on = underlineBtn.getAttribute('aria-pressed') === 'true';
+      const label = currentNode.querySelector('.label');
+      label.style.textDecoration = on ? 'underline' : 'none';
+      // underline doesn't change metrics much, no need to refit, but keep it consistent
+      fitLabelToNode(currentNode);
+      saveState();
+    });
       if (!hex) return;
       currentNode.style.backgroundColor = hex;
       saveState(); // persist as you pick
@@ -436,7 +541,7 @@ PLAN (pseudocode)
         stage.querySelectorAll('.node').forEach(n => { if (n !== mainNode) n.remove(); });
         mainNode.style.left = 'calc(50% - 55px)';
         mainNode.style.top = 'calc(50% - 55px)';
-        mainNode.querySelector('.label').textContent = 'Cercle Principal';
+        mainNode.querySelector('.label').textContent = 'Cercle principal';
         fitLabelToNode(mainNode);
         mainNode.style.backgroundColor = 'var(--primary)';
         idCounter = 1;
@@ -486,7 +591,12 @@ PLAN (pseudocode)
         w: parseFloat(getComputedStyle(n).width) || 110,
         h: parseFloat(getComputedStyle(n).height) || 110,
         text: n.querySelector('.label')?.textContent || '',
-        color: toHex(n.style.backgroundColor || getComputedStyle(n).backgroundColor) || '#CC0000'
+        color: toHex(n.style.backgroundColor || getComputedStyle(n).backgroundColor) || '#CC0000',
+        fontFamily: n.querySelector('.label')?.style.fontFamily || '',
+        fontWeight: n.querySelector('.label')?.style.fontWeight || '',
+        fontStyle: n.querySelector('.label')?.style.fontStyle || '',
+        textDecoration: n.querySelector('.label')?.style.textDecoration || '',
+        maxFont: n.dataset.maxFont ? parseFloat(n.dataset.maxFont) : null
       }));
       const edges = Array.from(qLines()).map(l => ({ from: l.dataset.from, to: l.dataset.to }));
       return { idCounter, nodes, edges };
@@ -525,7 +635,13 @@ PLAN (pseudocode)
         const col = normalizeHex(n.color) || toHex(n.color) || '#CC0000';
         node.style.backgroundColor = col;
         node.innerHTML = '<span class="label"></span>';
-        node.querySelector('.label').textContent = n.text || '';
+        const labelEl = node.querySelector('.label');
+        labelEl.textContent = n.text || '';
+        if (n.fontFamily) labelEl.style.fontFamily = n.fontFamily;
+        if (n.fontWeight) labelEl.style.fontWeight = n.fontWeight;
+        if (n.fontStyle) labelEl.style.fontStyle = n.fontStyle;
+        if (n.textDecoration) labelEl.style.textDecoration = n.textDecoration;
+        if (n.maxFont) node.dataset.maxFont = String(n.maxFont);
         fitLabelToNode(node);
         if (!node.id) node.id = '';
         byId[n.id] = node;
@@ -534,7 +650,7 @@ PLAN (pseudocode)
       // Ensure main exists if missing
       if (!byId['node-0']) {
         mainNode.dataset.id = 'node-0';
-        mainNode.querySelector('.label').textContent = 'Cercle Principal';
+        mainNode.querySelector('.label').textContent = 'Cercle principal';
         byId['node-0'] = mainNode;
       }
 
