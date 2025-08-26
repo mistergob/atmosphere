@@ -1,13 +1,3 @@
-<!--
-PLAN (pseudocode)
-- Add a native <input type="color" id="colorPicker"> inside the context menu.
-- When opening the menu, sync the picker with the selected node's color.
-- On picker change/input, apply the color to the current node and persist state.
-- Replace prompt-based color change: clicking "Modifier la couleur" focuses/triggers the color input.
-- Store colors as normalized HEX (#RRGGBB) in localStorage; convert from computed rgb() when needed.
-- When creating/restoring nodes, use HEX values to avoid rgb()/var() mismatches.
--->
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
