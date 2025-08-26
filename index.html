@@ -444,6 +444,10 @@ PLAN (pseudocode)
     colorPicker.addEventListener('input', (e) => {
       if (!currentNode) return;
       const hex = normalizeHex(e.target.value);
+      if (!hex) return;
+      currentNode.style.backgroundColor = hex;
+      saveState(); // persist as you pick
+    });
 
     // Font family
     fontSelect?.addEventListener('change', (e) => {
@@ -499,13 +503,8 @@ PLAN (pseudocode)
       const on = underlineBtn.getAttribute('aria-pressed') === 'true';
       const label = currentNode.querySelector('.label');
       label.style.textDecoration = on ? 'underline' : 'none';
-      // underline doesn't change metrics much, no need to refit, but keep it consistent
       fitLabelToNode(currentNode);
       saveState();
-    });
-      if (!hex) return;
-      currentNode.style.backgroundColor = hex;
-      saveState(); // persist as you pick
     });
 
     // Toolbar actions
