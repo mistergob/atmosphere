@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Espace de Travail — amélioré</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #cc0000;
+      --ring: rgba(17,24,39,0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* Stage */
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    /* Lines canvas */
+    svg#wires {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* click-through */
+    }
+
+    /* Node (circle) */
+    .node {
+      position: absolute;
+      width: 110px;
+      height: 110px;
+      border-radius: 9999px;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      text-align: center;
+      padding: 10px;
+      box-shadow: 0 8px 24px var(--ring);
+      cursor: grab;
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+      will-change: transform, left, top;
+    }
+    .node:active { cursor: grabbing; }
+    .node:hover { filter: brightness(1.05); }
+    .node .label { pointer-events: none; line-height: 1.1; }
+
+    /* Context menu */
+    .menu {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      min-width: 240px;
+      background: var(--card);
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+      z-index: 50;
+    }
+    .menu button {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      text-align: left;
+      padding: 12px 14px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .menu button:hover { background: #f3f4f6; }
+
+    /* Toolbar */
+    .toolbar {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      display: flex;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 8px;
+      box-shadow: 0 8px 24px var(--ring);
+      z-index: 60;
+    }
+    .toolbar button {
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: #111827;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .toolbar button.secondary { background: #4b5563; }
+    .toolbar button.danger { background: #b91c1c; }
+
+    /* Accessibility focus */
+    .menu button:focus, .toolbar button:focus { outline: 3px solid #93c5fd; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <div id="stage" class="stage" aria-label="Espace de travail">
+    <svg id="wires" aria-hidden="true"></svg>
+    <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px); background: var(--primary);">
+      <span class="label">Cercle Principal</span>
+    </div>
+  </div>
+
+  <!-- Context menu -->
+  <div id="menu" class="menu" role="menu" aria-hidden="true">
+    <button data-action="add">➕ Grand Cercle (même taille)</button>
+    <button data-action="addSmall">➕ Petit Cercle</button>
+    <button data-action="color">🎨 Modifier la couleur</button>
+    <button data-action="rename">✏️ Renommer le cercle</button>
+    <button data-action="delete">🗑️ Supprimer le cercle</button>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="toolbar" aria-label="Actions rapides">
+    <button id="exportBtn">Exporter JSON</button>
+    <button id="importBtn" class="secondary">Importer JSON</button>
+    <button id="resetBtn" class="danger">Réinitialiser</button>
+    <input id="fileInput" type="file" accept="application/json" style="display:none" />
+  </div>
+
+  <input id="colorPicker" type="color" style="position:fixed; left:-9999px; opacity:0" />
+
+  <script>
+    // --- State & Elements
+    const stage = document.getElementById('stage');
+    const svg = document.getElementById('wires');
+    const menu = document.getElementById('menu');
+    const mainNode = document.getElementById('main-node');
+    const colorPicker = document.getElementById('colorPicker');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    let currentNode = null;
+    let idCounter = 1; // will be overridden by saved state if any
+
+    // Tailles fixes pour deux types de cercles
+    const BIG_SIZE = 110;  // Grand Cercle
+    const SMALL_SIZE = 55; // Petit Cercle
+
+    // --- Utilities
+    const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+    function stageRect() { return stage.getBoundingClientRect(); }
+
+    function getCenter(el) {
+      const r = el.getBoundingClientRect();
+      const s = stageRect();
+      return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
+    }
+
+    function qLines() { return svg.querySelectorAll('line'); }
+
+    function updateLineEnds(line) {
+      const from = document.querySelector(`[data-id="${line.dataset.from}"]`);
+      const to = document.querySelector(`[data-id="${line.dataset.to}"]`);
+      if (!from || !to) return;
+      const c1 = getCenter(from);
+      const c2 = getCenter(to);
+      line.setAttribute('x1', c1.x); line.setAttribute('y1', c1.y);
+      line.setAttribute('x2', c2.x); line.setAttribute('y2', c2.y);
+    }
+
+    function updateLinesFor(el) {
+      const id = el.dataset.id;
+      qLines().forEach(line => {
+        if (line.dataset.from === id || line.dataset.to === id) updateLineEnds(line);
+      });
+    }
+
+    function updateAllLines() { qLines().forEach(updateLineEnds); }
+
+    function createLine(fromEl, toEl) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('stroke', '#111827');
+      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-linecap', 'round');
+      line.dataset.from = fromEl.dataset.id;
+      line.dataset.to = toEl.dataset.id;
+      svg.appendChild(line);
+      updateLineEnds(line);
+      return line;
+    }
+
+    function enableDrag(node) {
+      let offsetX = 0, offsetY = 0;
+
+      node.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return; // only left click
+        currentNode = node;
+        openMenu(null); // ensure menu closes while dragging
+        node.setPointerCapture(e.pointerId);
+        const s = stageRect();
+        const rect = node.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+
+        const onMove = (ev) => {
+          const sr = stageRect();
+          const newLeft = clamp(ev.clientX - sr.left - offsetX, 0, sr.width - rect.width);
+          const newTop  = clamp(ev.clientY - sr.top - offsetY, 0, sr.height - rect.height);
+          node.style.left = newLeft + 'px';
+          node.style.top = newTop + 'px';
+          updateLinesFor(node);
+        };
+
+        const onUp = (ev) => {
+          node.releasePointerCapture(e.pointerId);
+          node.removeEventListener('pointermove', onMove);
+          node.removeEventListener('pointerup', onUp);
+          saveState();
+        };
+
+        node.addEventListener('pointermove', onMove);
+        node.addEventListener('pointerup', onUp);
+      });
+
+      // Open custom menu on right-click + left-click
+      node.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, node); });
+      node.addEventListener('click', (e) => { openMenu(e, node); });
+    }
+
+    function addNodeNear(target) {
+      const rect = target.getBoundingClientRect();
+      const s = stageRect();
+
+      const baseW = BIG_SIZE;
+      const baseH = BIG_SIZE;
+
+      const left = clamp((rect.left - s.left) + baseW + 30, 0, s.width - baseW);
+      const top  = clamp((rect.top  - s.top)  + baseH + 30, 0, s.height - baseH);
+
+      const node = document.createElement('div');
+      node.className = 'node';
+      node.dataset.id = `node-${idCounter++}`;
+      node.style.left = left + 'px';
+      node.style.top = top + 'px';
+      node.style.width = baseW + 'px';
+      node.style.height = baseH + 'px';
+      node.style.background = getComputedStyle(target).backgroundColor || 'var(--primary)';
+
+      const span = document.createElement('span');
+      span.className = 'label';
+      span.textContent = 'Grand Cercle';
+      node.appendChild(span);
+
+      stage.appendChild(node);
+      enableDrag(node);
+      createLine(target, node);
+      saveState();
+      return node;
+    }
+    function addNodeNearScaled(target, scale = 0.5) {
+      const rect = target.getBoundingClientRect();
+      const s = stageRect();
+      const baseW = parseFloat(getComputedStyle(target).width) || target.offsetWidth || 110;
+      const baseH = parseFloat(getComputedStyle(target).height) || target.offsetHeight || 110;
+      const w = SMALL_SIZE;
+      const h = SMALL_SIZE;
+
+      const left = clamp((rect.left - s.left) + baseW + 30, 0, s.width - w);
+      const top  = clamp((rect.top  - s.top)  + baseH + 30, 0, s.height - h);
+
+      const node = document.createElement('div');
+      node.className = 'node';
+      node.dataset.id = `node-${idCounter++}`;
+      node.style.left = left + 'px';
+      node.style.top = top + 'px';
+      node.style.width = w + 'px';
+      node.style.height = h + 'px';
+      node.style.background = getComputedStyle(target).backgroundColor || 'var(--primary)';
+
+      const span = document.createElement('span');
+      span.className = 'label';
+      span.textContent = 'Petit Cercle';
+      node.appendChild(span);
+
+      stage.appendChild(node);
+      enableDrag(node);
+      createLine(target, node);
+      saveState();
+      return node;
+    }
+
+    function openMenu(event, node) {
+      // Close if called with null
+      if (!event) { menu.style.display = 'none'; return; }
+      currentNode = node || currentNode;
+      if (!currentNode) return;
+      menu.style.display = 'flex';
+      menu.setAttribute('aria-hidden', 'false');
+      const mRect = menu.getBoundingClientRect();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const x = Math.min(event.clientX, vw - mRect.width - 8);
+      const y = Math.min(event.clientY, vh - mRect.height - 8);
+      menu.style.left = x + 'px';
+      menu.style.top = y + 'px';
+      event.stopPropagation();
+    }
+
+    function closeMenu() {
+      menu.style.display = 'none';
+      menu.setAttribute('aria-hidden', 'true');
+    }
+    // Menu actions
+    menu.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (!currentNode) return;
+
+      if (action === 'add') {
+        addNodeNear(currentNode);
+        closeMenu();
+        return;
+      }
+      else if (action === 'addSmall') {
+        addNodeNearScaled(currentNode, 0.5);
+        const lbl = currentNode.querySelector('.label');
+        if (lbl) lbl.textContent = 'Grand Cercle';
+        closeMenu();
+        return;
+      }
+      else if (action === 'color') {
+        // Version simple et fiable (comme le premier code)
+        colorPicker.value = rgbToHex(getComputedStyle(currentNode).backgroundColor) || '#cc0000';
+        colorPicker.onchange = () => {
+          currentNode.style.background = colorPicker.value;
+          saveState();
+        };
+        colorPicker.click();
+        closeMenu();
+        return;
+      }
+      else if (action === 'rename') {
+        const label = currentNode.querySelector('.label');
+        const name = prompt('Entrez un nouveau nom :', label.textContent.trim());
+        if (name) { label.textContent = name; saveState(); }
+        closeMenu();
+        return;
+      }
+      else if (action === 'delete') {
+        if (currentNode.id === 'main-node' || currentNode.dataset.id === 'node-0') {
+          alert('Le cercle principal ne peut pas être supprimé.');
+        } else {
+          qLines().forEach(line => {
+            if (line.dataset.from === currentNode.dataset.id || line.dataset.to === currentNode.dataset.id) line.remove();
+          });
+          currentNode.remove();
+          saveState();
+        }
+        closeMenu();
+        return;
+      }
+      // Si clic sur un bouton sans data-action (ex. swatch), ne rien faire ici
+    });
+
+    // Toolbar actions
+    exportBtn.addEventListener('click', () => {
+      const data = buildState();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'workspace.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    importBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      try {
+        const json = JSON.parse(text);
+        restoreState(json);
+      } catch (err) {
+        alert('Fichier invalide.');
+      } finally {
+        fileInput.value = '';
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Réinitialiser l\'espace de travail ?')) {
+        localStorage.removeItem('workspaceState');
+        // Clear lines and nodes (except main)
+        qLines().forEach(l => l.remove());
+        stage.querySelectorAll('.node').forEach(n => { if (n !== mainNode) n.remove(); });
+        mainNode.style.left = 'calc(50% - 55px)';
+        mainNode.style.top = 'calc(50% - 55px)';
+        mainNode.querySelector('.label').textContent = 'Cercle Principal';
+        mainNode.style.background = 'var(--primary)';
+        idCounter = 1;
+        saveState();
+        updateAllLines();
+      }
+    });
+
+    // Click outside to close menu
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target)) closeMenu();
+    });
+
+    // Keep lines aligned on resize
+    window.addEventListener('resize', updateAllLines);
+
+    // Color helper
+    function rgbToHex(rgb) {
+      const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (!m) return null;
+      return '#' + [m[1], m[2], m[3]].map(v => Number(v).toString(16).padStart(2, '0')).join('');
+    }
+    // Persistence
+    function buildState() {
+      const nodes = Array.from(stage.querySelectorAll('.node')).map(n => ({
+        id: n.dataset.id,
+        left: n.style.left || '0px',
+        top: n.style.top || '0px',
+        w: parseFloat(getComputedStyle(n).width) || 110,
+        h: parseFloat(getComputedStyle(n).height) || 110,
+        text: n.querySelector('.label')?.textContent || '',
+        color: getComputedStyle(n).backgroundColor
+      }));
+      const edges = Array.from(qLines()).map(l => ({ from: l.dataset.from, to: l.dataset.to }));
+      return { idCounter, nodes, edges };
+    }
+
+    function saveState() {
+      const data = buildState();
+      localStorage.setItem('workspaceState', JSON.stringify(data));
+    }
+
+    function restoreState(data) {
+      // Clear existing
+      qLines().forEach(l => l.remove());
+      stage.querySelectorAll('.node').forEach(n => { if (n !== mainNode) n.remove(); });
+
+      // Reset counter
+      idCounter = data?.idCounter ?? 1;
+
+      // Rebuild nodes
+      const byId = {};
+      (data?.nodes || []).forEach(n => {
+        let node;
+        if (n.id === 'node-0') {
+          node = mainNode;
+        } else {
+          node = document.createElement('div');
+          node.className = 'node';
+          node.dataset.id = n.id;
+          stage.appendChild(node);
+          enableDrag(node);
+        }
+        node.style.left = n.left;
+        node.style.top = n.top;
+        if (n.w) node.style.width  = n.w + 'px';
+        if (n.h) node.style.height = n.h + 'px';
+        node.style.background = n.color || 'var(--primary)';
+        node.innerHTML = '<span class="label"></span>';
+        node.querySelector('.label').textContent = n.text || '';
+        if (!node.id) node.id = '';
+        byId[n.id] = node;
+      });
+
+      // Ensure main exists if missing
+      if (!byId['node-0']) {
+        mainNode.dataset.id = 'node-0';
+        mainNode.querySelector('.label').textContent = 'Cercle Principal';
+        byId['node-0'] = mainNode;
+      }
+
+      // Enable drag for main if not already
+      if (!mainNode._dragEnabled) { enableDrag(mainNode); mainNode._dragEnabled = true; }
+
+      // Rebuild edges
+      (data?.edges || []).forEach(e => {
+        if (byId[e.from] && byId[e.to]) createLine(byId[e.from], byId[e.to]);
+      });
+
+      updateAllLines();
+      saveState();
+    }
+
+    // --- Init
+    enableDrag(mainNode);
+    mainNode._dragEnabled = true;
+
+    // Load saved state if any
+    const saved = localStorage.getItem('workspaceState');
+    if (saved) {
+      try { restoreState(JSON.parse(saved)); } catch { /* ignore */ }
+    } else {
+      saveState();
+    }
+  </script>
+</body>
+</html>
