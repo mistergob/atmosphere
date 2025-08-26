@@ -1,3 +1,13 @@
+<!--
+PLAN (pseudocode)
+- Add a native <input type="color" id="colorPicker"> inside the context menu.
+- When opening the menu, sync the picker with the selected node's color.
+- On picker change/input, apply the color to the current node and persist state.
+- Replace prompt-based color change: clicking "Modifier la couleur" focuses/triggers the color input.
+- Store colors as normalized HEX (#RRGGBB) in localStorage; convert from computed rgb() when needed.
+- When creating/restoring nodes, use HEX values to avoid rgb()/var() mismatches.
+-->
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -25,41 +35,18 @@
     }
 
     /* Stage */
-    .stage {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-    }
+    .stage { position: relative; width: 100vw; height: 100vh; display: grid; place-items: center; }
 
     /* Lines canvas */
-    svg#wires {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none; /* click-through */
-    }
+    svg#wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
     /* Node (circle) */
     .node {
-      position: absolute;
-      width: 110px;
-      height: 110px;
-      border-radius: 9999px;
+      position: absolute; width: 110px; height: 110px; border-radius: 9999px;
       background-color: var(--primary);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      text-align: center;
-      padding: 10px;
-      box-shadow: 0 8px 24px var(--ring);
-      cursor: grab;
-      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
-      will-change: transform, left, top;
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; text-align: center; padding: 10px; box-shadow: 0 8px 24px var(--ring);
+      cursor: grab; transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease; will-change: transform, left, top;
     }
     .node:active { cursor: grabbing; }
     .node:hover { filter: brightness(1.05); }
@@ -67,51 +54,19 @@
 
     /* Context menu */
     .menu {
-      position: fixed;
-      display: none;
-      flex-direction: column;
-      min-width: 240px;
-      background: var(--card);
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-      overflow: hidden;
-      z-index: 50;
+      position: fixed; display: none; flex-direction: column; min-width: 260px;
+      background: var(--card); border: 1px solid #e5e7eb; border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden; z-index: 50;
     }
-    .menu button {
-      appearance: none;
-      background: transparent;
-      border: 0;
-      text-align: left;
-      padding: 12px 14px;
-      font-size: 14px;
-      cursor: pointer;
-    }
+    .menu button { appearance: none; background: transparent; border: 0; text-align: left; padding: 12px 14px; font-size: 14px; cursor: pointer; }
     .menu button:hover { background: #f3f4f6; }
+    .menu .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid #e5e7eb; }
+    .menu .row label { font-size: 12px; color: var(--muted); }
+    .menu .row input[type="color"] { width: 36px; height: 28px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0; background: transparent; cursor: pointer; }
 
     /* Toolbar */
-    .toolbar {
-      position: fixed;
-      right: 16px;
-      top: 16px;
-      display: flex;
-      gap: 8px;
-      background: var(--card);
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 8px;
-      box-shadow: 0 8px 24px var(--ring);
-      z-index: 60;
-    }
-    .toolbar button {
-      padding: 8px 12px;
-      border: 0;
-      border-radius: 10px;
-      background: #111827;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
+    .toolbar { position: fixed; right: 16px; top: 16px; display: flex; gap: 8px; background: var(--card); border: 1px solid #e5e7eb; border-radius: 14px; padding: 8px; box-shadow: 0 8px 24px var(--ring); z-index: 60; }
+    .toolbar button { padding: 8px 12px; border: 0; border-radius: 10px; background: #111827; color: #fff; font-weight: 600; cursor: pointer; }
     .toolbar button.secondary { background: #4b5563; }
     .toolbar button.danger { background: #b91c1c; }
 
@@ -132,6 +87,11 @@
     <button data-action="add">➕ Grand Cercle (même taille)</button>
     <button data-action="addSmall">➕ Petit Cercle</button>
     <button data-action="color">🎨 Modifier la couleur</button>
+    <div class="row" aria-label="Sélecteur de couleur">
+      <label for="colorPicker">Couleur</label>
+      <input id="colorPicker" type="color" value="#CC0000" />
+      <button data-action="applyAll" title="Appliquer cette couleur à tous les cercles">Appliquer à tous</button>
+    </div>
     <button data-action="rename">✏️ Renommer le cercle</button>
     <button data-action="delete">🗑️ Supprimer le cercle</button>
   </div>
@@ -154,6 +114,7 @@
     const importBtn = document.getElementById('importBtn');
     const resetBtn = document.getElementById('resetBtn');
     const fileInput = document.getElementById('fileInput');
+    const colorPicker = document.getElementById('colorPicker');
 
     let currentNode = null;
     let idCounter = 1; // will be overridden by saved state if any
@@ -164,6 +125,7 @@
 
     // --- Utilities
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+    const isHex = (s) => !!String(s).match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
 
     function stageRect() { return stage.getBoundingClientRect(); }
 
@@ -207,6 +169,7 @@
     }
 
     function enableDrag(node) {
+      if (node._dragEnabled) return; // avoid duplicate listeners
       let offsetX = 0, offsetY = 0;
 
       node.addEventListener('pointerdown', (e) => {
@@ -241,6 +204,8 @@
       // Open custom menu on right-click + left-click
       node.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, node); });
       node.addEventListener('click', (e) => { openMenu(e, node); });
+
+      node._dragEnabled = true;
     }
 
     function addNodeNear(target) {
@@ -260,7 +225,7 @@
       node.style.top = top + 'px';
       node.style.width = baseW + 'px';
       node.style.height = baseH + 'px';
-      node.style.backgroundColor = getComputedStyle(target).backgroundColor || 'var(--primary)';
+      node.style.backgroundColor = toHex(getComputedStyle(target).backgroundColor) || '#CC0000';
 
       const span = document.createElement('span');
       span.className = 'label';
@@ -292,7 +257,7 @@
       node.style.top = top + 'px';
       node.style.width = w + 'px';
       node.style.height = h + 'px';
-      node.style.backgroundColor = getComputedStyle(target).backgroundColor || 'var(--primary)';
+      node.style.backgroundColor = toHex(getComputedStyle(target).backgroundColor) || '#CC0000';
 
       const span = document.createElement('span');
       span.className = 'label';
@@ -313,6 +278,11 @@
       if (!currentNode) return;
       menu.style.display = 'flex';
       menu.setAttribute('aria-hidden', 'false');
+
+      // sync color picker with the current node color
+      const initialHex = toHex(getComputedStyle(currentNode).backgroundColor) || '#CC0000';
+      colorPicker.value = initialHex;
+
       const mRect = menu.getBoundingClientRect();
       const vw = window.innerWidth, vh = window.innerHeight;
       const x = Math.min(event.clientX, vw - mRect.width - 8);
@@ -347,20 +317,15 @@
         return;
       }
       else if (action === 'color') {
-        // --- Fenêtre simple : saisie d'un code hex ---
-        const node = currentNode;
-        const initial = toHex(getComputedStyle(node).backgroundColor) || '#CC0000';
-        const val = prompt('Entrez un code couleur au format hex (#RRGGBB) :', initial);
-        if (val == null) { closeMenu(); return; }
-        const hex = normalizeHex(String(val).trim());
-        if (!hex) {
-          alert('Code couleur invalide. Exemple valide : #CC0000');
-          closeMenu();
-          return;
-        }
-        node.style.backgroundColor = hex;
+        // Focus & open the native color picker
+        colorPicker.focus();
+        colorPicker.click();
+        return; // keep menu open while picking
+      }
+      else if (action === 'applyAll') {
+        const hex = normalizeHex(colorPicker.value) || '#CC0000';
+        document.querySelectorAll('.node').forEach(n => { n.style.backgroundColor = hex; });
         saveState();
-        closeMenu();
         return;
       }
       else if (action === 'rename') {
@@ -383,6 +348,15 @@
         closeMenu();
         return;
       }
+    });
+
+    // Color picker live update
+    colorPicker.addEventListener('input', (e) => {
+      if (!currentNode) return;
+      const hex = normalizeHex(e.target.value);
+      if (!hex) return;
+      currentNode.style.backgroundColor = hex;
+      saveState(); // persist as you pick
     });
 
     // Toolbar actions
@@ -437,10 +411,8 @@
     // --- Color helpers ---
     function normalizeHex(input) {
       if (!input) return null;
-      // #RRGGBB or RRGGBB
       let m = String(input).match(/^#?([0-9a-fA-F]{6})$/);
       if (m) return '#' + m[1].toUpperCase();
-      // #RGB or RGB -> expand
       m = String(input).match(/^#?([0-9a-fA-F]{3})$/);
       if (m) return '#' + m[1].split('').map(c => (c + c)).join('').toUpperCase();
       return null;
@@ -469,7 +441,7 @@
         w: parseFloat(getComputedStyle(n).width) || 110,
         h: parseFloat(getComputedStyle(n).height) || 110,
         text: n.querySelector('.label')?.textContent || '',
-        color: getComputedStyle(n).backgroundColor
+        color: toHex(n.style.backgroundColor || getComputedStyle(n).backgroundColor) || '#CC0000'
       }));
       const edges = Array.from(qLines()).map(l => ({ from: l.dataset.from, to: l.dataset.to }));
       return { idCounter, nodes, edges };
@@ -505,7 +477,8 @@
         node.style.top = n.top;
         if (n.w) node.style.width  = n.w + 'px';
         if (n.h) node.style.height = n.h + 'px';
-        node.style.backgroundColor = n.color || 'var(--primary)';
+        const col = normalizeHex(n.color) || toHex(n.color) || '#CC0000';
+        node.style.backgroundColor = col;
         node.innerHTML = '<span class="label"></span>';
         node.querySelector('.label').textContent = n.text || '';
         if (!node.id) node.id = '';
@@ -520,7 +493,7 @@
       }
 
       // Enable drag for main if not already
-      if (!mainNode._dragEnabled) { enableDrag(mainNode); mainNode._dragEnabled = true; }
+      enableDrag(mainNode);
 
       // Rebuild edges
       (data?.edges || []).forEach(e => {
@@ -533,7 +506,6 @@
 
     // --- Init
     enableDrag(mainNode);
-    mainNode._dragEnabled = true;
 
     // Load saved state if any
     const saved = localStorage.getItem('workspaceState');
