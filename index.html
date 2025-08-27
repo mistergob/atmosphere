@@ -1,15 +1,3 @@
-<!--
-PLAN (pseudocode)
-- Add a native <input type="color" id="colorPicker"> inside the context menu.
-- When opening the menu, sync the picker with the selected node's color.
-- On picker change/input, apply the color to the current node and persist state.
-- Replace prompt-based color change: clicking "Modifier la couleur" focuses/triggers the color input.
-- Store colors as normalized HEX (#RRGGBB) in localStorage; convert from computed rgb() when needed.
-- When creating/restoring nodes, use HEX values to avoid rgb()/var() mismatches.
-- Auto-fit label font-size so text stays inside circles (binary search), run on create/rename/restore/reset/resize.
-- Add font controls in context menu: family select, max size, and style toggles (bold/italic/underline). Persist per node.
--->
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -24,6 +12,8 @@ PLAN (pseudocode)
       --muted: #6b7280;
       --primary: #cc0000;
       --ring: rgba(17,24,39,0.08);
+      --sidebar-w: 260px;
+      --sidebar2-w: 260px;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -37,7 +27,7 @@ PLAN (pseudocode)
     }
 
     /* Stage */
-    .stage { position: relative; width: 100vw; height: 100vh; display: grid; place-items: center; }
+    .stage { position: relative; width: calc(100vw - var(--sidebar-w) - var(--sidebar2-w)); height: 100vh; margin-left: calc(var(--sidebar-w) + var(--sidebar2-w)); display: grid; place-items: center; }
 
     /* Lines canvas */
     svg#wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -52,6 +42,7 @@ PLAN (pseudocode)
     }
     .node:active { cursor: grabbing; }
     .node:hover { filter: brightness(1.05); }
+    .node.selected { outline: 3px solid #2563eb; box-shadow: 0 0 0 6px rgba(37,99,235,0.25), 0 8px 24px var(--ring); }
     .node .label { pointer-events: none; line-height: 1.1; width: 100%; max-width: 100%; overflow: hidden; word-break: break-word; hyphens: auto; }
 
     /* Context menu */
@@ -76,11 +67,64 @@ PLAN (pseudocode)
     .toolbar button.secondary { background: #4b5563; }
     .toolbar button.danger { background: #b91c1c; }
 
-    /* Accessibility focus */
-    .menu button:focus, .toolbar button:focus { outline: 3px solid #93c5fd; outline-offset: 2px; }
+    /* Sidebar */
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w); background: var(--card); border-right: 1px solid #e5e7eb; box-shadow: 0 8px 24px var(--ring); padding: 12px; overflow: auto; z-index: 70; }
+    .side-header { font-weight: 800; font-size: 14px; letter-spacing: .02em; margin: 4px 0 10px; text-transform: uppercase; color: var(--muted); }
+    .sidebar2 { left: var(--sidebar-w); width: var(--sidebar2-w); }
+    .side-item { width: 100%; text-align: left; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #111827; color: #fff; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+    .child-list { list-style: none; padding-left: 10px; margin: 6px 0 12px; }
+    .child-list li { padding: 6px 8px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; margin-bottom: 6px; font-size: 13px; cursor: pointer; }
+    .child-list li:hover { background: #f3f4f6; }
+
+    /* highlight pulse */
+    @keyframes pulseNode { 0% { box-shadow: 0 0 0 0 rgba(17,24,39,.35); } 100% { box-shadow: 0 0 0 6px rgba(17,24,39,0); }}
+    .node.pulse { animation: pulseNode 600ms ease-out 2; }
   </style>
 </head>
 <body>
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar" aria-label="Navigation">
+    <div class="side-header">Cercles principaux</div>
+    <div id="principalList"></div>
+  </aside>
+  <!-- Sidebar droite : panneau d’actions -->
+  <aside id="actions" class="sidebar sidebar2" aria-label="Actions du cercle">
+    <div class="side-header">Actions du cercle</div>
+    <div id="selectedInfo" style="font-size:12px;color:var(--muted);margin:0 0 8px;">Aucun cercle sélectionné</div>
+    <button id="actAddPrincipal" class="side-item" type="button">➕ Cercle principal</button>
+    <button id="actAddSecondary" class="side-item" type="button">➕ Cercle secondaire</button>
+    <div class="row" aria-label="Couleur (panneau)">
+      <label for="colorPicker2">Couleur</label>
+      <input id="colorPicker2" type="color" value="#CC0000" />
+    </div>
+    <div class="row" aria-label="Police (panneau)">
+      <label for="fontSelect2">Police</label>
+      <select id="fontSelect2">
+        <option value="system-ui">Système</option>
+        <option value="Arial">Arial</option>
+        <option value="Roboto">Roboto</option>
+        <option value="Georgia">Georgia</option>
+        <option value="'Times New Roman'">Times New Roman</option>
+        <option value="'Courier New'">Courier New</option>
+      </select>
+    </div>
+    <div class="row" aria-label="Taille max (panneau)">
+      <label for="fontSizeMax2">Taille max</label>
+      <input id="fontSizeMax2" type="number" min="6" max="72" step="1" value="32" />
+    </div>
+    <div class="row" aria-label="Style (panneau)">
+      <label>Style</label>
+      <div class="toggle-group">
+        <button type="button" id="boldBtn2" class="toggle" aria-pressed="true">Gras</button>
+        <button type="button" id="italicBtn2" class="toggle" aria-pressed="false">Italique</button>
+        <button type="button" id="underlineBtn2" class="toggle" aria-pressed="false">Souligné</button>
+      </div>
+    </div>
+    <button id="actCenter" class="side-item" type="button">🎯 Centrer sur le cercle</button>
+    <button id="actRename" class="side-item" type="button">✏️ Renommer le cercle</button>
+    <button id="actDelete" class="side-item" type="button" style="background:#b91c1c">🗑️ Supprimer le cercle</button>
+  </aside>
+
   <div id="stage" class="stage" aria-label="Espace de travail">
     <svg id="wires" aria-hidden="true"></svg>
     <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px);">
@@ -88,7 +132,7 @@ PLAN (pseudocode)
     </div>
   </div>
 
-  <!-- Context menu -->
+  <!-- Menu contextuel (clic droit uniquement) -->
   <div id="menu" class="menu" role="menu" aria-hidden="true">
     <button data-action="add">➕ Cercle principal</button>
     <button data-action="addSmall">➕ Cercle secondaire</button>
@@ -148,6 +192,21 @@ PLAN (pseudocode)
     const boldBtn = document.getElementById('boldBtn');
     const italicBtn = document.getElementById('italicBtn');
     const underlineBtn = document.getElementById('underlineBtn');
+    const principalList = document.getElementById('principalList');
+    // Panneau d’actions (droite)
+    const actionsPanel = document.getElementById('actions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const actAddPrincipal = document.getElementById('actAddPrincipal');
+    const actAddSecondary = document.getElementById('actAddSecondary');
+    const actCenter = document.getElementById('actCenter');
+    const actRename = document.getElementById('actRename');
+    const actDelete = document.getElementById('actDelete');
+    const colorPicker2 = document.getElementById('colorPicker2');
+    const fontSelect2 = document.getElementById('fontSelect2');
+    const fontSizeMax2 = document.getElementById('fontSizeMax2');
+    const boldBtn2 = document.getElementById('boldBtn2');
+    const italicBtn2 = document.getElementById('italicBtn2');
+    const underlineBtn2 = document.getElementById('underlineBtn2');
 
     let currentNode = null;
     let idCounter = 1; // will be overridden by saved state if any
@@ -158,16 +217,9 @@ PLAN (pseudocode)
 
     // --- Utilities
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-    const isHex = (s) => !!String(s).match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
 
     function stageRect() { return stage.getBoundingClientRect(); }
-
-    function getCenter(el) {
-      const r = el.getBoundingClientRect();
-      const s = stageRect();
-      return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
-    }
-
+    function getCenter(el) { const r = el.getBoundingClientRect(); const s = stageRect(); return { x: r.left - s.left + r.width/2, y: r.top - s.top + r.height/2 }; }
     function qLines() { return svg.querySelectorAll('line'); }
 
     function updateLineEnds(line) {
@@ -179,14 +231,7 @@ PLAN (pseudocode)
       line.setAttribute('x1', c1.x); line.setAttribute('y1', c1.y);
       line.setAttribute('x2', c2.x); line.setAttribute('y2', c2.y);
     }
-
-    function updateLinesFor(el) {
-      const id = el.dataset.id;
-      qLines().forEach(line => {
-        if (line.dataset.from === id || line.dataset.to === id) updateLineEnds(line);
-      });
-    }
-
+    function updateLinesFor(el) { const id = el.dataset.id; qLines().forEach(line => { if (line.dataset.from === id || line.dataset.to === id) updateLineEnds(line); }); }
     function updateAllLines() { qLines().forEach(updateLineEnds); }
 
     function createLine(fromEl, toEl) {
@@ -205,7 +250,6 @@ PLAN (pseudocode)
     function fitLabelToNode(node) {
       const label = node.querySelector('.label');
       if (!label) return;
-      // ensure measurement constraints
       label.style.width = '100%';
       label.style.maxWidth = '100%';
       label.style.whiteSpace = 'normal';
@@ -219,18 +263,15 @@ PLAN (pseudocode)
       const contentH = Math.max(0, node.clientHeight - padY);
 
       const cap = parseFloat(node.dataset.maxFont);
-      let low = 6; // min readable
+      let low = 6;
       let high = Math.max(6, Math.floor(Math.min(contentH, Number.isFinite(cap) ? cap : contentH)));
       let best = low;
 
-      // quick guard for empty
       if (!label.textContent || !label.textContent.trim()) {
         label.style.fontSize = Math.min(16, high) + 'px';
         return;
       }
-
-      // binary search for largest font that fits both width and height
-      for (let i = 0; i < 12 && low <= high; i++) { // 12 iterations are enough
+      for (let i = 0; i < 12 && low <= high; i++) {
         const mid = Math.floor((low + high) / 2);
         label.style.fontSize = mid + 'px';
         const fits = label.scrollWidth <= contentW && label.scrollHeight <= contentH;
@@ -238,19 +279,62 @@ PLAN (pseudocode)
       }
       label.style.fontSize = best + 'px';
     }
+    function fitAllLabels() { document.querySelectorAll('.node').forEach(fitLabelToNode); }
 
-    function fitAllLabels() {
-      document.querySelectorAll('.node').forEach(fitLabelToNode);
+    // --- Selection helpers
+    function enableActionPanel(enabled){
+      const ctrls = actionsPanel?.querySelectorAll('button,select,input');
+      ctrls?.forEach(el=>{ el.disabled = !enabled; if(!enabled && el.classList.contains('toggle')) el.setAttribute('aria-pressed','false'); });
+      selectedInfo.textContent = enabled && currentNode ? (currentNode.querySelector('.label')?.textContent || currentNode.dataset.id) : 'Aucun cercle sélectionné';
+    }
+    function syncActionPanel(){
+      if(!currentNode){ enableActionPanel(false); return; }
+      enableActionPanel(true);
+      const hex = toHex(getComputedStyle(currentNode).backgroundColor) || '#CC0000';
+      colorPicker.value = hex; colorPicker2.value = hex;
+      const labelEl = currentNode.querySelector('.label');
+      const famInline = labelEl.style.fontFamily;
+      const fam = famInline && Array.from(fontSelect.options).some(o=>o.value===famInline) ? famInline : 'system-ui';
+      fontSelect.value = fam; fontSelect2.value = fam;
+      const cap = currentNode.dataset.maxFont || '32';
+      fontSizeMax.value = cap; fontSizeMax2.value = cap;
+      const cs = getComputedStyle(labelEl);
+      const fw = parseInt(cs.fontWeight,10);
+      const isBold = (fw >= 600) || cs.fontWeight === 'bold';
+      const isItalic = cs.fontStyle === 'italic';
+      const isUnderline = (cs.textDecorationLine || cs.textDecoration || '').includes('underline');
+      [boldBtn,boldBtn2].forEach(b=>b.setAttribute('aria-pressed', isBold?'true':'false'));
+      [italicBtn,italicBtn2].forEach(b=>b.setAttribute('aria-pressed', isItalic?'true':'false'));
+      [underlineBtn,underlineBtn2].forEach(b=>b.setAttribute('aria-pressed', isUnderline?'true':'false'));
+      selectedInfo.textContent = labelEl.textContent || currentNode.dataset.id;
+    }
+    function setCurrentNode(node){
+      document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+      currentNode = node || null;
+      if(currentNode){ currentNode.classList.add('selected'); }
+      syncActionPanel();
+    }
+    function centerOnCurrent(){
+      if(!currentNode) return;
+      const sr = stageRect();
+      const rect = currentNode.getBoundingClientRect();
+      const left = Math.max(0, Math.min(sr.width - rect.width, (sr.width - rect.width)/2));
+      const top  = Math.max(0, Math.min(sr.height - rect.height, (sr.height - rect.height)/2));
+      currentNode.style.left = left + 'px';
+      currentNode.style.top = top + 'px';
+      updateLinesFor(currentNode);
+      saveState();
+      currentNode.classList.add('pulse'); setTimeout(()=>currentNode.classList.remove('pulse'),800);
     }
 
     function enableDrag(node) {
-      if (node._dragEnabled) return; // avoid duplicate listeners
+      if (node._dragEnabled) return;
       let offsetX = 0, offsetY = 0;
 
       node.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return; // only left click
-        currentNode = node;
-        openMenu(null); // ensure menu closes while dragging
+        setCurrentNode(node);
+        openMenu(null); // close context menu during drag
         node.setPointerCapture(e.pointerId);
         const rect = node.getBoundingClientRect();
         offsetX = e.clientX - rect.left;
@@ -264,31 +348,26 @@ PLAN (pseudocode)
           node.style.top = newTop + 'px';
           updateLinesFor(node);
         };
-
         const onUp = () => {
           node.releasePointerCapture(e.pointerId);
           node.removeEventListener('pointermove', onMove);
           node.removeEventListener('pointerup', onUp);
           saveState();
         };
-
         node.addEventListener('pointermove', onMove);
         node.addEventListener('pointerup', onUp);
       });
 
-      // Open custom menu on right-click + left-click
+      // Clic droit uniquement pour ouvrir le menu
       node.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, node); });
-      
+
       node._dragEnabled = true;
     }
 
     function addNodeNear(target) {
       const rect = target.getBoundingClientRect();
       const s = stageRect();
-
-      const baseW = BIG_SIZE;
-      const baseH = BIG_SIZE;
-
+      const baseW = BIG_SIZE, baseH = BIG_SIZE;
       const left = clamp((rect.left - s.left) + baseW + 30, 0, s.width - baseW);
       const top  = clamp((rect.top  - s.top)  + baseH + 30, 0, s.height - baseH);
 
@@ -310,17 +389,17 @@ PLAN (pseudocode)
       stage.appendChild(node);
       enableDrag(node);
       createLine(target, node);
+      setCurrentNode(node);
       saveState();
       return node;
     }
 
-    function addNodeNearScaled(target, scale = 0.5) {
+    function addNodeNearScaled(target) {
       const rect = target.getBoundingClientRect();
       const s = stageRect();
-      const baseW = parseFloat(getComputedStyle(target).width) || target.offsetWidth || 110;
-      const baseH = parseFloat(getComputedStyle(target).height) || target.offsetHeight || 110;
-      const w = SMALL_SIZE;
-      const h = SMALL_SIZE;
+      const w = SMALL_SIZE, h = SMALL_SIZE;
+      const baseW = parseFloat(getComputedStyle(target).width) || 110;
+      const baseH = parseFloat(getComputedStyle(target).height) || 110;
 
       const left = clamp((rect.left - s.left) + baseW + 30, 0, s.width - w);
       const top  = clamp((rect.top  - s.top)  + baseH + 30, 0, s.height - h);
@@ -343,6 +422,7 @@ PLAN (pseudocode)
       stage.appendChild(node);
       enableDrag(node);
       createLine(target, node);
+      setCurrentNode(node);
       saveState();
       return node;
     }
@@ -350,25 +430,21 @@ PLAN (pseudocode)
     function openMenu(event, node) {
       // Close if called with null
       if (!event) { menu.style.display = 'none'; return; }
-      currentNode = node || currentNode;
-      if (!currentNode) return;
+      if (node) setCurrentNode(node); else if (!currentNode) return;
+
       menu.style.display = 'flex';
       menu.setAttribute('aria-hidden', 'false');
 
-      // sync color picker with the current node color
+      // sync menu controls with current node
       const initialHex = toHex(getComputedStyle(currentNode).backgroundColor) || '#CC0000';
       colorPicker.value = initialHex;
 
-      // sync font family
       const labelEl = currentNode.querySelector('.label');
       const famInline = labelEl.style.fontFamily;
       const famOpt = famInline && Array.from(fontSelect.options).some(o => o.value === famInline) ? famInline : 'system-ui';
       fontSelect.value = famOpt;
-
-      // sync max font size cap
       fontSizeMax.value = currentNode.dataset.maxFont || '32';
 
-      // sync style toggles
       const csLabel = getComputedStyle(labelEl);
       const fw = parseInt(csLabel.fontWeight, 10);
       const isBold = (fw >= 600) || csLabel.fontWeight === 'bold';
@@ -386,128 +462,128 @@ PLAN (pseudocode)
       menu.style.top = y + 'px';
       event.stopPropagation();
     }
-
-    function closeMenu() {
-      menu.style.display = 'none';
-      menu.setAttribute('aria-hidden', 'true');
-    }
+    function closeMenu() { menu.style.display = 'none'; menu.setAttribute('aria-hidden', 'true'); }
 
     // Menu actions
     menu.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
-      if (!btn) return;
+      if (!btn || !currentNode) return;
       const action = btn.dataset.action;
-      if (!currentNode) return;
 
       if (action === 'add') {
-        addNodeNear(currentNode);
-        closeMenu();
-        return;
+        addNodeNear(currentNode); closeMenu(); return;
       }
-      else if (action === 'addSmall') {
-        addNodeNearScaled(currentNode, 0.5);
-        const lbl = currentNode.querySelector('.label');
-        if (lbl) lbl.textContent = 'Cercle principal';
-        closeMenu();
-        return;
+      if (action === 'addSmall') {
+        addNodeNearScaled(currentNode); const lbl = currentNode.querySelector('.label'); if (lbl) lbl.textContent = 'Cercle principal';
+        closeMenu(); return;
       }
-      else if (action === 'color') {
-        // Focus & open the native color picker
-        colorPicker.focus();
-        colorPicker.click();
-        return; // keep menu open while picking
-      }
-      
-      else if (action === 'rename') {
+      if (action === 'color') { colorPicker.focus(); colorPicker.click(); return; }
+
+      if (action === 'rename') {
         const label = currentNode.querySelector('.label');
         const name = prompt('Entrez un nouveau nom :', label.textContent.trim());
         if (name) { label.textContent = name; fitLabelToNode(currentNode); saveState(); }
-        closeMenu();
-        return;
+        closeMenu(); return;
       }
-      else if (action === 'delete') {
+      if (action === 'delete') {
         if (currentNode.id === 'main-node' || currentNode.dataset.id === 'node-0') {
           alert('Le cercle principal ne peut pas être supprimé.');
         } else {
-          qLines().forEach(line => {
-            if (line.dataset.from === currentNode.dataset.id || line.dataset.to === currentNode.dataset.id) line.remove();
-          });
+          qLines().forEach(line => { if (line.dataset.from === currentNode.dataset.id || line.dataset.to === currentNode.dataset.id) line.remove(); });
           currentNode.remove();
+          document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+          currentNode = null; enableActionPanel(false);
           saveState();
         }
-        closeMenu();
-        return;
+        closeMenu(); return;
       }
     });
 
-    // Color picker live update
+    // Couleur
     colorPicker.addEventListener('input', (e) => {
       if (!currentNode) return;
-      const hex = normalizeHex(e.target.value);
-      if (!hex) return;
-      currentNode.style.backgroundColor = hex;
-      saveState(); // persist as you pick
+      const hex = normalizeHex(e.target.value); if (!hex) return;
+      currentNode.style.backgroundColor = hex; colorPicker2.value = hex; saveState();
     });
-
-    // Font family
-    fontSelect?.addEventListener('change', (e) => {
+    colorPicker2.addEventListener('input', (e) => {
       if (!currentNode) return;
-      const label = currentNode.querySelector('.label');
-      label.style.fontFamily = e.target.value;
-      fitLabelToNode(currentNode);
-      saveState();
+      const hex = normalizeHex(e.target.value); if (!hex) return;
+      currentNode.style.backgroundColor = hex; colorPicker.value = hex; saveState();
     });
 
-    // Max font size cap
-    fontSizeMax?.addEventListener('input', (e) => {
-      if (!currentNode) return;
-      const v = parseFloat(e.target.value);
-      if (!Number.isFinite(v)) return;
-      const min = parseFloat(e.target.min) || 6;
-      const max = parseFloat(e.target.max) || 72;
-      const clamped = Math.max(min, Math.min(max, v));
-      currentNode.dataset.maxFont = String(clamped);
-      fitLabelToNode(currentNode);
-      saveState();
-    });
+    // Police
+    function setFamily(val){ if(!currentNode) return; const label=currentNode.querySelector('.label'); label.style.fontFamily=val; fitLabelToNode(currentNode); saveState(); }
+    fontSelect.addEventListener('change', (e)=>{ setFamily(e.target.value); fontSelect2.value=e.target.value; });
+    fontSelect2.addEventListener('change', (e)=>{ setFamily(e.target.value); fontSelect.value=e.target.value; });
 
-    // Style toggles
-    const togglePressed = (btn) => btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    // Taille max
+    function setMax(v){
+      if(!currentNode) return;
+      const min=6, max=72, val=Math.max(min, Math.min(max, parseFloat(v)||min));
+      currentNode.dataset.maxFont = String(val);
+      fontSizeMax.value = String(val);
+      fontSizeMax2.value = String(val);
+      fitLabelToNode(currentNode); saveState();
+    }
+    fontSizeMax.addEventListener('input', (e)=> setMax(e.target.value));
+    fontSizeMax2.addEventListener('input', (e)=> setMax(e.target.value));
 
-    boldBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!currentNode) return;
-      togglePressed(boldBtn);
-      const on = boldBtn.getAttribute('aria-pressed') === 'true';
-      const label = currentNode.querySelector('.label');
-      label.style.fontWeight = on ? '700' : '400';
-      fitLabelToNode(currentNode);
-      saveState();
-    });
+    // Styles
+    function toggle(btnA, btnB, apply){
+      if(!currentNode) return;
+      const pressed = btnA.getAttribute('aria-pressed') === 'true' ? 'false' : 'true';
+      btnA.setAttribute('aria-pressed', pressed); btnB.setAttribute('aria-pressed', pressed);
+      apply(pressed === 'true'); fitLabelToNode(currentNode); saveState();
+    }
+    boldBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(boldBtn,boldBtn2,(on)=> currentNode.querySelector('.label').style.fontWeight = on?'700':'400'); });
+    boldBtn2.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(boldBtn2,boldBtn,(on)=> currentNode.querySelector('.label').style.fontWeight = on?'700':'400'); });
+    italicBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(italicBtn,italicBtn2,(on)=> currentNode.querySelector('.label').style.fontStyle = on?'italic':'normal'); });
+    italicBtn2.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(italicBtn2,italicBtn,(on)=> currentNode.querySelector('.label').style.fontStyle = on?'italic':'normal'); });
+    underlineBtn.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(underlineBtn,underlineBtn2,(on)=> currentNode.querySelector('.label').style.textDecoration = on?'underline':'none'); });
+    underlineBtn2.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(underlineBtn2,underlineBtn,(on)=> currentNode.querySelector('.label').style.textDecoration = on?'underline':'none'); });
 
-    italicBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!currentNode) return;
-      togglePressed(italicBtn);
-      const on = italicBtn.getAttribute('aria-pressed') === 'true';
-      const label = currentNode.querySelector('.label');
-      label.style.fontStyle = on ? 'italic' : 'normal';
-      fitLabelToNode(currentNode);
-      saveState();
-    });
+    // Actions panneau droit
+    actAddPrincipal.addEventListener('click', ()=>{ if(!currentNode) return; addNodeNear(currentNode); });
+    actAddSecondary.addEventListener('click', ()=>{ if(!currentNode) return; addNodeNearScaled(currentNode); });
+    actCenter.addEventListener('click', ()=> centerOnCurrent());
+    actRename.addEventListener('click', ()=>{ if(!currentNode) return; const label=currentNode.querySelector('.label'); const name = prompt('Entrez un nouveau nom :', label.textContent.trim()); if(name){ label.textContent=name; fitLabelToNode(currentNode); saveState(); syncActionPanel(); } });
+    actDelete.addEventListener('click', ()=>{ if(!currentNode) return; if (currentNode.id === 'main-node' || currentNode.dataset.id === 'node-0') { alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(line => { if (line.dataset.from === currentNode.dataset.id || line.dataset.to === currentNode.dataset.id) line.remove(); }); currentNode.remove(); document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected')); currentNode = null; enableActionPanel(false); saveState(); });
 
-    underlineBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!currentNode) return;
-      togglePressed(underlineBtn);
-      const on = underlineBtn.getAttribute('aria-pressed') === 'true';
-      const label = currentNode.querySelector('.label');
-      label.style.textDecoration = on ? 'underline' : 'none';
-      fitLabelToNode(currentNode);
-      saveState();
-    });
+    // Sidebar gauche (principaux + secondaires)
+    const approxEq = (a,b,eps=0.5)=>Math.abs(a-b)<=eps;
+    function isPrincipalNode(n){ const w = parseFloat(getComputedStyle(n).width)||0; return approxEq(w, BIG_SIZE); }
+    function isSecondaryNode(n){ const w = parseFloat(getComputedStyle(n).width)||0; return approxEq(w, SMALL_SIZE); }
+    function getNodeById(id){ return document.querySelector(`[data-id="${id}"]`); }
+    function neighborsOf(id){
+      const res = []; qLines().forEach(l=>{ if(l.dataset.from===id) res.push(l.dataset.to); else if(l.dataset.to===id) res.push(l.dataset.from); });
+      return Array.from(new Set(res));
+    }
+    function populateChildren(principalId, container){
+      container.innerHTML='';
+      const seconds = neighborsOf(principalId).map(getNodeById).filter(Boolean).filter(isSecondaryNode);
+      if(seconds.length===0){ const li=document.createElement('li'); li.textContent='Aucun cercle secondaire'; li.style.color='#6b7280'; li.style.borderStyle='dashed'; container.appendChild(li); return; }
+      seconds.forEach(n=>{
+        const li=document.createElement('li');
+        li.textContent = (n.querySelector('.label')?.textContent || n.dataset.id);
+        li.addEventListener('click',()=>{ setCurrentNode(n); n.classList.add('pulse'); setTimeout(()=>n.classList.remove('pulse'),800); });
+        container.appendChild(li);
+      });
+    }
+    function refreshSidebar(){
+      if(!principalList) return;
+      principalList.innerHTML='';
+      const principals = Array.from(document.querySelectorAll('.node')).filter(isPrincipalNode);
+      principals.forEach(n=>{
+        const wrap=document.createElement('div');
+        const btn=document.createElement('button'); btn.className='side-item'; btn.type='button';
+        btn.textContent=n.querySelector('.label')?.textContent||n.dataset.id; btn.dataset.pid=n.dataset.id;
+        const ul=document.createElement('ul'); ul.className='child-list'; ul.style.display='none';
+        btn.addEventListener('click',()=>{ setCurrentNode(n); if(ul.style.display==='none'){ populateChildren(n.dataset.id, ul); ul.style.display='block'; } else { ul.style.display='none'; } });
+        wrap.appendChild(btn); wrap.appendChild(ul); principalList.appendChild(wrap);
+      });
+    }
 
-    // Toolbar actions
+    // Export/Import/Reset
     exportBtn.addEventListener('click', () => {
       const data = buildState();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -516,26 +592,16 @@ PLAN (pseudocode)
       a.href = url; a.download = 'workspace.json'; a.click();
       URL.revokeObjectURL(url);
     });
-
     importBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      try {
-        const json = JSON.parse(text);
-        restoreState(json);
-      } catch (err) {
-        alert('Fichier invalide.');
-      } finally {
-        fileInput.value = '';
-      }
+      const file = e.target.files?.[0]; if (!file) return;
+      try { const text = await file.text(); restoreState(JSON.parse(text)); }
+      catch { alert('Fichier invalide.'); }
+      finally { fileInput.value = ''; }
     });
-
     resetBtn.addEventListener('click', () => {
       if (confirm('Réinitialiser l\'espace de travail ?')) {
         localStorage.removeItem('workspaceState');
-        // Clear lines and nodes (except main)
         qLines().forEach(l => l.remove());
         stage.querySelectorAll('.node').forEach(n => { if (n !== mainNode) n.remove(); });
         mainNode.style.left = 'calc(50% - 55px)';
@@ -543,6 +609,8 @@ PLAN (pseudocode)
         mainNode.querySelector('.label').textContent = 'Cercle principal';
         fitLabelToNode(mainNode);
         mainNode.style.backgroundColor = 'var(--primary)';
+        document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+        currentNode = null; enableActionPanel(false);
         idCounter = 1;
         saveState();
         updateAllLines();
@@ -550,8 +618,13 @@ PLAN (pseudocode)
     });
 
     // Click outside to close menu
-    document.addEventListener('click', (e) => {
-      if (!menu.contains(e.target)) closeMenu();
+    document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
+    // Deselect when clicking empty stage area
+    stage.addEventListener('mousedown', (e) => {
+      if (!e.target.closest('.node') && !menu.contains(e.target) && !actionsPanel.contains(e.target) && !document.getElementById('sidebar').contains(e.target)) {
+        document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+        currentNode = null; enableActionPanel(false);
+      }
     });
 
     // Keep lines aligned on resize
@@ -566,7 +639,6 @@ PLAN (pseudocode)
       if (m) return '#' + m[1].split('').map(c => (c + c)).join('').toUpperCase();
       return null;
     }
-
     function toHex(input) {
       if (!input) return null;
       const hexMatch = String(input).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -600,27 +672,22 @@ PLAN (pseudocode)
       const edges = Array.from(qLines()).map(l => ({ from: l.dataset.from, to: l.dataset.to }));
       return { idCounter, nodes, edges };
     }
-
     function saveState() {
       const data = buildState();
       localStorage.setItem('workspaceState', JSON.stringify(data));
+      refreshSidebar();
     }
-
     function restoreState(data) {
-      // Clear existing
       qLines().forEach(l => l.remove());
       stage.querySelectorAll('.node').forEach(n => { if (n !== mainNode) n.remove(); });
 
-      // Reset counter
       idCounter = data?.idCounter ?? 1;
 
-      // Rebuild nodes
       const byId = {};
       (data?.nodes || []).forEach(n => {
         let node;
-        if (n.id === 'node-0') {
-          node = mainNode;
-        } else {
+        if (n.id === 'node-0') { node = mainNode; }
+        else {
           node = document.createElement('div');
           node.className = 'node';
           node.dataset.id = n.id;
@@ -642,40 +709,29 @@ PLAN (pseudocode)
         if (n.textDecoration) labelEl.style.textDecoration = n.textDecoration;
         if (n.maxFont) node.dataset.maxFont = String(n.maxFont);
         fitLabelToNode(node);
-        if (!node.id) node.id = '';
         byId[n.id] = node;
       });
 
-      // Ensure main exists if missing
-      if (!byId['node-0']) {
-        mainNode.dataset.id = 'node-0';
-        mainNode.querySelector('.label').textContent = 'Cercle principal';
-        byId['node-0'] = mainNode;
-      }
+      if (!byId['node-0']) { mainNode.dataset.id = 'node-0'; mainNode.querySelector('.label').textContent = 'Cercle principal'; byId['node-0'] = mainNode; }
 
-      // Enable drag for main if not already
       enableDrag(mainNode);
-    fitLabelToNode(mainNode);
+      fitLabelToNode(mainNode);
 
-      // Rebuild edges
-      (data?.edges || []).forEach(e => {
-        if (byId[e.from] && byId[e.to]) createLine(byId[e.from], byId[e.to]);
-      });
+      (data?.edges || []).forEach(e => { if (byId[e.from] && byId[e.to]) createLine(byId[e.from], byId[e.to]); });
 
       updateAllLines();
+      refreshSidebar();
       saveState();
     }
 
     // --- Init
     enableDrag(mainNode);
+    refreshSidebar();
+    enableActionPanel(false);
 
     // Load saved state if any
     const saved = localStorage.getItem('workspaceState');
-    if (saved) {
-      try { restoreState(JSON.parse(saved)); } catch { /* ignore */ }
-    } else {
-      saveState();
-    }
+    if (saved) { try { restoreState(JSON.parse(saved)); } catch { /* ignore */ } } else { saveState(); }
   </script>
 </body>
 </html>
