@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
@@ -11,8 +11,8 @@
   <style>
     :root{
       /* Palette ATMOS */
-      --primary:#00eaff;          /* cyan néon */
-      --accent:#8a2be2;           /* violet néon */
+      --primary:#00eaff;
+      --accent:#8a2be2;
       --text:#e6f7ff;
       --muted:#9fb3c8;
 
@@ -108,7 +108,6 @@
         0 0 0 4px color-mix(in oklab, var(--node, var(--primary)), white 35%),
         0 0 60px color-mix(in oklab, var(--node, var(--primary)), white 25%);
     }
-    /* Cibles d'accroche / câblage (patch) */
     .node.snap-target{
       box-shadow: 0 0 0 5px rgba(138,43,226,.45), 0 0 36px rgba(138,43,226,.45);
       filter: var(--glow);
@@ -164,7 +163,7 @@
       width:36px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0;background:transparent;cursor:pointer
     }
     .menu select,.menu input[type="number"],.menu input[type="text"]{
-      height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)
+      height:28px;border:1px solid rgba  (255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)
     }
     .menu .toggle-group{display:flex;gap:8px}
     .menu .toggle{
@@ -231,7 +230,6 @@
       transition: background .15s ease, filter .15s ease;
     }
     .side-item:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
-    /* Patch: style danger manquant */
     .side-item.danger{ color:#ff9ca3 }
     .side-item.danger:hover{ background: linear-gradient(90deg, rgba(255,70,70,.08), rgba(255,90,90,.06)); filter: drop-shadow(0 0 8px rgba(255,70,70,.35)); }
 
@@ -243,7 +241,7 @@
     }
     .child-list li:hover{ background: rgba(255,255,255,.06); filter: var(--glow); }
 
-    /* CROIX fermeture Menu 2 */
+    /* Croix fermeture Menu 2 */
     #closeMenu2{
       position:sticky; top:0; float:right; width:26px; height:26px; border-radius:8px; cursor:pointer; font-weight:700; margin-left:auto;
       border:1px solid transparent; color:var(--text);
@@ -255,7 +253,7 @@
     }
     #closeMenu2:hover{ transform: translateY(-2px); filter: var(--glow); }
 
-    /* Rows, labels, inputs, toggles (Menu 2 style aligné Menu 3) */
+    /* Rows, labels, inputs, toggles (Menu 2) */
     #actions .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}
     #actions .row:first-of-type{border-top:none}
     #actions .row label{font-size:12px;color:var(--muted);min-width:90px}
@@ -285,7 +283,7 @@
     .modal{position:fixed;inset:0;background:rgba(3,6,16,.55);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter: blur(2px)}
     .modal .card{
       width:min(520px,calc(100vw - 32px));max-height:80vh;overflow:auto;
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      background: linear_gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.06); border-radius:16px;
       box-shadow:0 20px 40px rgba(0,0,0,.35); padding:14px; color:var(--text);
       backdrop-filter: blur(8px);
@@ -318,16 +316,14 @@
       display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle
     }
 
-    /* Pulse sélection */
     @keyframes pulseNode{0%{box-shadow:0 0 0 0 rgba(0,234,255,.35)}100%{box-shadow:0 0 0 6px rgba(0,234,255,0)}}
     .node.pulse{animation:pulseNode 600ms ease-out 2}
 
-    /* Accessibilité */
     @media (prefers-reduced-motion: reduce){
       *{ animation:none!important; transition:none!important }
     }
 
-    /* Auth panel (léger) */
+    /* Mini auth box */
     #authBox{margin-bottom:12px}
     #who{font-size:12px;color:var(--muted);margin-bottom:6px}
   </style>
@@ -335,7 +331,7 @@
 <body>
   <!-- Menu 1 -->
   <aside id="sidebar" class="sidebar" aria-label="Navigation">
-    <!-- Auth minimal dans la barre latérale -->
+    <!-- AUTH mini -->
     <div id="authBox">
       <div id="who">Vérification…</div>
       <button class="side-item" id="loginGoogle" type="button">Se connecter avec Google</button>
@@ -518,7 +514,8 @@
   </div>
 
   <!-- Modal liste tâches (globale) -->
-  <div id="tasksModal" class="modal" aria-hidden="true">
+  <div id="tasksModal" class="modal" aria-hidden
+="true">
     <div class="card">
       <h3>Liste des tâches</h3>
       <div id="tasksContainer" class="list"></div>
@@ -532,36 +529,26 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    /* Elements */
-    const stage = document.getElementById('stage');
-    const world = document.getElementById('world');
-    const svg = document.getElementById('wires');
-    const menu = document.getElementById('menu');           // Menu 3
-    const menuHeart = document.getElementById('menuHeart'); // Menu 4
-    const mainNode = document.getElementById('main-node');
-    const exportBtn = document.getElementById('exportBtn');
-    const importBtn = document.getElementById('importBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const fileInput = document.getElementById('fileInput');
-    const homeBtn = document.getElementById('homeBtn');
-    const wireModeBtn = document.getElementById('wireModeBtn');
-    const tasksBtn = document.getElementById('tasksBtn');
-
-    /* ===== AUTH SUPABASE (ajout) ===== */
-    // Renseigne tes valeurs (les mêmes que sur ATMOS)
+    /* ===== AUTH SUPABASE (partagée avec ATMOS) ===== */
     const SUPABASE_URL = "https://jlfvbggzdkkwrmpsamvz.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZnZiZ2d6ZGtrd3JtcHNhbXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjUyNjMsImV4cCI6MjA3Mjg0MTI2M30.kDbtNVQfHEVxRbA8jsAfLu7-6kDioTCG-nWVQ91gJIs";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX…WVQ91gJIs"; // garde la même clé que sur ATMOS
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        // IMPORTANT : même storageKey sur toutes les pages du même projet
+        storageKey: "sb-jlfvbggzdkkwrmpsamvz-auth-token",
+      }
     });
 
     const loginGoogleBtn = document.getElementById('loginGoogle');
     const loginMsBtn     = document.getElementById('loginMicrosoft');
     const logoutBtn      = document.getElementById('logout');
     const whoSpan        = document.getElementById('who');
-
-    const SITE_URL = location.origin + location.pathname;
+    const SITE_URL       = location.origin + location.pathname;
 
     function setAuthBusy(b){ [loginGoogleBtn, loginMsBtn, logoutBtn].forEach(x=> x && (x.disabled = !!b)); }
 
@@ -581,21 +568,28 @@
       }
     }
 
-    async function signIn(provider, scopes){
+    async function signIn(provider){
       try{
         setAuthBusy(true);
         const { error } = await supabase.auth.signInWithOAuth({
-          provider, options: { redirectTo: SITE_URL, scopes }
+          provider,
+          options: {
+            redirectTo: SITE_URL,
+            scopes: 'openid email profile'
+          }
         });
         if(error){ alert('Connexion impossible : ' + error.message); setAuthBusy(false); }
-      }catch(err){ alert('Erreur inattendue : ' + (err?.message || err)); setAuthBusy(false); }
+      }catch(err){
+        alert('Erreur inattendue : ' + (err?.message || err));
+        setAuthBusy(false);
+      }
     }
 
-    loginGoogleBtn.onclick = () => signIn('google', 'email profile openid');
-    loginMsBtn.onclick     = () => signIn('azure',  'email profile openid');
-    logoutBtn.onclick      = async () => { await supabase.auth.signOut(); showAuth(null); };
+    loginGoogleBtn?.addEventListener('click', ()=>signIn('google'));
+    loginMsBtn?.addEventListener('click',     ()=>signIn('azure'));
+    logoutBtn?.addEventListener('click', async ()=>{ await supabase.auth.signOut(); showAuth(null); });
 
-    // Nettoie l'URL après OAuth
+    // Nettoie l’URL après OAuth
     (function cleanOAuthParams(){
       const q = new URLSearchParams(location.search);
       if(q.has('code') || q.has('state') || q.has('error_description')){
@@ -611,6 +605,25 @@
       whoSpan.textContent = 'Ouvre via HTTPS (GitHub Pages…) pour que la connexion fonctionne.';
     }
     /* ===== FIN AUTH ===== */
+
+    /* =======================
+       === APP SPHAIRA JS ====
+       ======================= */
+
+    /* Elements */
+    const stage = document.getElementById('stage');
+    const world = document.getElementById('world');
+    const svg = document.getElementById('wires');
+    const menu = document.getElementById('menu');           // Menu 3
+    const menuHeart = document.getElementById('menuHeart'); // Menu 4
+    const mainNode = document.getElementById('main-node');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const fileInput = document.getElementById('fileInput');
+    const homeBtn = document.getElementById('homeBtn');
+    const wireModeBtn = document.getElementById('wireModeBtn');
+    const tasksBtn = document.getElementById('tasksBtn');
 
     /* Menu 3 controls */
     const titleInput3 = document.getElementById('titleInput3');
@@ -680,7 +693,7 @@
     /* Câblage */
     const wiring = { active:false, source:null, ghost:null };
 
-    /* Tâches (modale par nœud) */
+    /* Tâches */
     let taskEditorNode = null;
     let editingTaskId = null;
 
@@ -754,7 +767,12 @@
       const cap=parseFloat(node.dataset.maxFont);
       let low=6, high=Math.max(6,Math.floor(Math.min(contentH, Number.isFinite(cap)?cap:contentH))), best=low;
       if(!label.textContent.trim()){ label.style.fontSize=Math.min(16,high)+'px'; return; }
-      for(let i=0;i<12 && low<=high;i++){ const mid=Math.floor((low+high)/2); label.style.fontSize=mid+'px'; const fits=label.scrollWidth<=contentW && label.scrollHeight<=contentH; if(fits){ best=mid; low=mid+1; } else { high=mid-1; } }
+      for(let i=0;i<12 && low<=high;i++){
+        const mid=Math.floor((low+high)/2);
+        label.style.fontSize=mid+'px';
+        const fits=label.scrollWidth<=contentW && label.scrollHeight<=contentH;
+        if(fits){ best=mid; low=mid+1; } else { high=mid-1; }
+      }
       label.style.fontSize=best+'px';
     }
     const fitAllLabels=()=> world.querySelectorAll('.node').forEach(fitLabelToNode);
@@ -765,7 +783,8 @@
       const ctrls=actionsPanel.querySelectorAll('button,select,input');
       ctrls.forEach(el=>{ el.disabled=!enabled; if(!enabled && el.classList.contains('toggle')) el.setAttribute('aria-pressed','false'); });
       selectedInfo.textContent = enabled && currentNode ? (currentNode.querySelector('.label')?.textContent || currentNode.dataset.id) : 'Aucun cercle sélectionné';
-      titleInput2.value = enabled && currentNode ? (currentNode.querySelector('.label')?.textContent || '') : '';
+      titleInput2.value = enabled && currentNode ? (currentNode.query
+Selector('.label')?.textContent || '') : '';
     }
     function syncActionPanel(){
       if(!currentNode){ enableActionPanel(false); return; }
@@ -787,7 +806,7 @@
       syncOpenUrlIcon();
     }
     function setCurrentNode(node,{fromMenu1=false,preserveMenu2=false}={}){
-      world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+      world.querySelectorAll('.node.selected').forEach(n=>n.removeAttribute('class')); // nettoie visuel
       currentNode=node||null;
       if(currentNode) currentNode.classList.add('selected');
       syncActionPanel();
@@ -811,7 +830,8 @@
 
     /* Graphe & déplacement liés */
     function neighborsOf(id){
-      const res=[]; qLines().forEach(l=>{ if(l.dataset.from===id) res.push(l.dataset.to); else if(l.dataset.to===id) res.push(l.dataset.from); });
+      const res=[]; qLines().forEach(l=>{ if(l.dataset.from===id) res
+.push(l.dataset.to); else if(l.dataset.to===id) res.push(l.dataset.from); });
       return Array.from(new Set(res));
     }
     function principalNeighborsOf(nodeEl){
@@ -891,7 +911,8 @@
     /* Tâches */
     function updateTaskBadge(node){
       const old = node.querySelector('.task-badge');
-      if(old) old.remove();
+      if(old) old
+.remove();
       const tasks = node._tasks || [];
       if(tasks.length===0) return;
       const b = document.createElement('div');
@@ -975,7 +996,8 @@
     }
     function renderNodeTasksList(){
       const node = taskEditorNode;
-      nodeTasksList.innerHTML = '';
+      nodeTasksList.inner
+HTML = '';
       const tasks = (node && node._tasks) ? node._tasks : [];
       if(tasks.length === 0){
         const empty = document.createElement('div');
@@ -1000,18 +1022,13 @@
             </div>
           </div>
         `;
-        div.querySelector('.btn-edit').addEventListener('click', ()=>{
-          openTaskEditor(node, t.id);
-        });
-        div.querySelector('.btn-del').addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id);
-        });
+        div.querySelector('.btn-edit').addEventListener('click', ()=>{ openTaskEditor(node, t.id); });
+        div.querySelector('.btn-del').addEventListener('click', (ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id); });
         nodeTasksList.appendChild(div);
       });
     }
 
-    taskSave.addEventListener('click', ()=>{
+    const taskSaveHandler = ()=>{
       if(!currentNode) return closeTaskEditor();
       const t = taskTitle.value.trim();
       const d = taskDesc.value.trim();
@@ -1029,15 +1046,16 @@
       if(isModalOpen(tasksModal)) renderGlobalTasksList();
       taskTitle.value = ''; taskDesc.value = ''; taskStart.value=''; taskEnd.value='';
       taskTitle.focus();
-    });
-    taskCancel.addEventListener('click', closeTaskEditor);
+    };
+
+    const taskCancelHandler = ()=>closeTaskEditor();
+
+    taskSave.add
+EventListener('click', taskSaveHandler);
+    taskCancel.addEventListener('click', taskCancelHandler);
     taskEditor.addEventListener('click', (e)=>{ if(e.target===taskEditor) closeTaskEditor(); });
 
     // Liste globale des tâches
-    tasksBtn.addEventListener('click', openTasksListModal);
-    tasksClose.addEventListener('click', closeTasksListModal);
-    tasksModal.addEventListener('click', (e)=>{ if(e.target===tasksModal) closeTasksListModal(); });
-
     function gatherAllTasks(){
       const items = [];
       world.querySelectorAll('.node').forEach(n=>{
@@ -1067,8 +1085,8 @@
             <div class="task-main" style="flex:1; cursor:pointer">
               <div><strong><span class="dot" style="background:${col}"></span>⭐ ${escapeHtml(task.title)}</strong></div>
               <div><small>Sur : ${escapeHtml(nodeName)}</small></div>
-              ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : ''}
-              ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : ''}
+              ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : '' }
+              ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : '' }
             </div>
             <div style="display:flex; gap:6px;">
               <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
@@ -1080,22 +1098,10 @@
         const delBtn = wrapper.querySelector('.btn-del');
         const editBtn = wrapper.querySelector('.btn-edit');
 
-        main.addEventListener('click', ()=>{
-          closeTasksListModal();
-          setCurrentNode(node,{preserveMenu2:true});
-          centerOnNode(node);
-        });
-        delBtn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          if(confirm('Supprimer cette tâche ?')){
-            deleteTaskFromNode(node, task.id);
-          }
-        });
-        editBtn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          closeTasksListModal();
-          openTaskEditor(node, task.id);
-        });
+        main.addEventListener('click', ()=>{ closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node); });
+        delBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')){ deleteTaskFromNode(node, task.id); } });
+        editBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); closeTasksListModal(); open
+TaskEditor(node, task.id); });
 
         tasksContainer.appendChild(wrapper);
       });
@@ -1213,12 +1219,13 @@
       const tW=target.offsetWidth, tH=target.offsetHeight;
       const left = ((tRect.left - sr.left - camera.x)/camera.z) + tW + 30;
       const top  = ((tRect.top  - sr.top  - camera.y)/camera.z) + tH + 30;
-      const node=document.createElement('div'); node.className='node'; node.dataset	id=`node-${idCounter++}`;
+      const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
       const base = toHex(getComputedStyle(target).backgroundColor) || '#00EAFF';
       Object.assign(node.style,{left:left+'px',top:top+'px',width:SMALL_SIZE+'px',height:SMALL_SIZE+'px',backgroundColor: base});
       node.style.setProperty('--node', base);
       node.innerHTML='<span class="label">Cercle secondaire</span>';
-      node._tasks = [];
+      node._
+tasks = [];
       world.appendChild(node); enableDrag(node); fitLabelToNode(node); createLine(target,node); setCurrentNode(node,{preserveMenu2:true}); saveState(); return node;
     }
 
@@ -1342,7 +1349,8 @@
       if(!currentNode) return;
       if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; }
       qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); });
-      currentNode.remove(); currentNode=null; enableActionPanel(false); saveState(); showActionsPanel(false); menu2Locked=false; refreshSidebar();
+      currentNode.remove(); currentNode=null; enableActionPanel(false); saveState(); showActionsPanel(false); menu2
+Locked=false; refreshSidebar();
     });
 
     // Titre direct (Menu 2)
@@ -1371,7 +1379,8 @@
     exportBtn.addEventListener('click',()=>{ const data=buildState(); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='workspace.json'; a.click(); URL.revokeObjectURL(url); });
     importBtn.addEventListener('click',()=> fileInput.click());
     fileInput.addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; try{ const text=await f.text(); restoreState(JSON.parse(text)); } catch{ alert('Fichier invalide.'); } finally { fileInput.value=''; } });
-    resetBtn.addEventListener('click',()=>{ if(!confirm("Réinitialiser l'espace de travail ?")) return; localStorage.removeItem('workspaceState'); localStorage.removeItem('sphaira:workspaceState:v1'); qLines().forEach(l=>l.remove()); world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); }); mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)'; mainNode.querySelector('.label').textContent='Cercle principal'; mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)'); idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera(); mainNode._tasks=[]; saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar(); });
+    resetBtn.addEventListener('click',()=>{ if(!confirm("Réinitialiser l'espace de travail ?")) return; localStorage.removeItem('workspaceState'); localStorage.removeItem('sphaira:workspaceState:v1'); qLines().forEach(l=>l.remove()); world
+.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); }); mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)'; mainNode.querySelector('.label').textContent='Cercle principal'; mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)'); idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera(); mainNode._tasks=[]; saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar(); });
 
     /* Pan & sélection contrôlée */
     (function setupStagePan(){
@@ -1385,9 +1394,7 @@
           return;
         }
         if(e.button===0 && !wiring.active && !e.target.closest('.node') && !menu.contains(e.target) && !menuHeart.contains(e.target) && !actionsPanel.contains(e.target) && !document.getElementById('sidebar').contains(e.target)){
-          if(menu2Locked){
-            // on garde le panneau ouvert
-          }else{
+          if(!menu2Locked){
             world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
             currentNode=null; enableActionPanel(false); showActionsPanel(false);
           }
@@ -1428,7 +1435,8 @@
     }, { passive:false });
 
     /* ====== Mode CÂBLAGE ====== */
-    function startWiring(source){
+    function startW
+iring(source){
       if(!wiring.active){ wiring.active=true; wireModeBtn.classList.add('active'); }
       wiring.source = source;
       if(wiring.ghost) wiring.ghost.remove();
@@ -1437,7 +1445,8 @@
       line.setAttribute('stroke','#7dd3fc'); line.setAttribute('stroke-width','2'); line.setAttribute('stroke-linecap','round'); line.setAttribute('stroke-dasharray','6 6');
       line.setAttribute('x1', c.x); line.setAttribute('y1', c.y); line.setAttribute('x2', c.x); line.setAttribute('y2', c.y);
       svg.appendChild(line); wiring.ghost=line;
-      world.querySelectorAll('.node').forEach(n=>{ if(n===source){ n.classList.add('wire-source'); } else { n.classList.add('connectable'); } });
+      world.querySelectorAll('.node').forEach(n=>{ if(n===source){ n.classList.add('wire-source'); } else { n.classList
+.add('connectable'); } });
     }
     function stopWiring(){
       wiring.active=false; wireModeBtn.classList.remove('active');
@@ -1455,14 +1464,9 @@
     }
 
     // Toolbar & clavier
-    wireModeBtn.addEventListener('click',()=>{
-      if(wiring.active) stopWiring();
-      else { wiring.active=true; wireModeBtn.classList.add('active'); }
-    });
+    wireModeBtn.addEventListener('click',()=>{ if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); }});
     document.addEventListener('keydown',(e)=>{
-      if(e.key==='c' || e.key==='C'){
-        if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); }
-      }
+      if(e.key==='c' || e.key==='C'){ if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); } }
       if(e.key==='Escape'){ if(wiring.active) stopWiring(); closeMenu(menu); closeMenu(menuHeart); }
     });
 
@@ -1490,7 +1494,6 @@
     function saveState(){
       const data=buildState();
       localStorage.setItem('workspaceState', JSON.stringify(data));
-      /* Patch compatibilité ORIS : double clé */
       localStorage.setItem('sphaira:workspaceState:v1', JSON.stringify(data));
       refreshSidebar();
     }
