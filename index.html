@@ -243,7 +243,7 @@
     }
     .child-list li:hover{ background: rgba(255,255,255,.06); filter: var(--glow); }
 
-    /* Croix fermeture Menu 2 */
+    /* CROIX fermeture Menu 2 */
     #closeMenu2{
       position:sticky; top:0; float:right; width:26px; height:26px; border-radius:8px; cursor:pointer; font-weight:700; margin-left:auto;
       border:1px solid transparent; color:var(--text);
@@ -326,11 +326,23 @@
     @media (prefers-reduced-motion: reduce){
       *{ animation:none!important; transition:none!important }
     }
+
+    /* Auth panel (léger) */
+    #authBox{margin-bottom:12px}
+    #who{font-size:12px;color:var(--muted);margin-bottom:6px}
   </style>
 </head>
 <body>
   <!-- Menu 1 -->
   <aside id="sidebar" class="sidebar" aria-label="Navigation">
+    <!-- Auth minimal dans la barre latérale -->
+    <div id="authBox">
+      <div id="who">Vérification…</div>
+      <button class="side-item" id="loginGoogle" type="button">Se connecter avec Google</button>
+      <button class="side-item" id="loginMicrosoft" type="button">Se connecter avec Microsoft</button>
+      <button class="side-item danger" id="logout" type="button" style="display:none">Se déconnecter</button>
+    </div>
+
     <div id="principalList"></div>
   </aside>
 
@@ -516,6 +528,9 @@
     </div>
   </div>
 
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
     /* Elements */
     const stage = document.getElementById('stage');
@@ -531,6 +546,71 @@
     const homeBtn = document.getElementById('homeBtn');
     const wireModeBtn = document.getElementById('wireModeBtn');
     const tasksBtn = document.getElementById('tasksBtn');
+
+    /* ===== AUTH SUPABASE (ajout) ===== */
+    // Renseigne tes valeurs (les mêmes que sur ATMOS)
+    const SUPABASE_URL = "https://jlfvbggzdkkwrmpsamvz.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZnZiZ2d6ZGtrd3JtcHNhbXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjUyNjMsImV4cCI6MjA3Mjg0MTI2M30.kDbtNVQfHEVxRbA8jsAfLu7-6kDioTCG-nWVQ91gJIs";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    const loginGoogleBtn = document.getElementById('loginGoogle');
+    const loginMsBtn     = document.getElementById('loginMicrosoft');
+    const logoutBtn      = document.getElementById('logout');
+    const whoSpan        = document.getElementById('who');
+
+    const SITE_URL = location.origin + location.pathname;
+
+    function setAuthBusy(b){ [loginGoogleBtn, loginMsBtn, logoutBtn].forEach(x=> x && (x.disabled = !!b)); }
+
+    function showAuth(session){
+      const user = session?.user || null;
+      if(user){
+        const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'Connecté';
+        whoSpan.textContent = `Connecté : ${name}`;
+        loginGoogleBtn.style.display = 'none';
+        loginMsBtn.style.display     = 'none';
+        logoutBtn.style.display      = '';
+      }else{
+        whoSpan.textContent = 'Non connecté';
+        loginGoogleBtn.style.display = '';
+        loginMsBtn.style.display     = '';
+        logoutBtn.style.display      = 'none';
+      }
+    }
+
+    async function signIn(provider, scopes){
+      try{
+        setAuthBusy(true);
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider, options: { redirectTo: SITE_URL, scopes }
+        });
+        if(error){ alert('Connexion impossible : ' + error.message); setAuthBusy(false); }
+      }catch(err){ alert('Erreur inattendue : ' + (err?.message || err)); setAuthBusy(false); }
+    }
+
+    loginGoogleBtn.onclick = () => signIn('google', 'email profile openid');
+    loginMsBtn.onclick     = () => signIn('azure',  'email profile openid');
+    logoutBtn.onclick      = async () => { await supabase.auth.signOut(); showAuth(null); };
+
+    // Nettoie l'URL après OAuth
+    (function cleanOAuthParams(){
+      const q = new URLSearchParams(location.search);
+      if(q.has('code') || q.has('state') || q.has('error_description')){
+        history.replaceState({}, document.title, SITE_URL);
+      }
+    })();
+
+    // État initial + abonnement
+    supabase.auth.getSession().then(({ data }) => showAuth(data.session));
+    supabase.auth.onAuthStateChange((_e, session) => { showAuth(session); setAuthBusy(false); });
+
+    if(location.protocol === 'file:'){
+      whoSpan.textContent = 'Ouvre via HTTPS (GitHub Pages…) pour que la connexion fonctionne.';
+    }
+    /* ===== FIN AUTH ===== */
 
     /* Menu 3 controls */
     const titleInput3 = document.getElementById('titleInput3');
@@ -1133,7 +1213,7 @@
       const tW=target.offsetWidth, tH=target.offsetHeight;
       const left = ((tRect.left - sr.left - camera.x)/camera.z) + tW + 30;
       const top  = ((tRect.top  - sr.top  - camera.y)/camera.z) + tH + 30;
-      const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
+      const node=document.createElement('div'); node.className='node'; node.dataset	id=`node-${idCounter++}`;
       const base = toHex(getComputedStyle(target).backgroundColor) || '#00EAFF';
       Object.assign(node.style,{left:left+'px',top:top+'px',width:SMALL_SIZE+'px',height:SMALL_SIZE+'px',backgroundColor: base});
       node.style.setProperty('--node', base);
