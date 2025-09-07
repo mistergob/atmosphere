@@ -108,6 +108,19 @@
         0 0 0 4px color-mix(in oklab, var(--node, var(--primary)), white 35%),
         0 0 60px color-mix(in oklab, var(--node, var(--primary)), white 25%);
     }
+    /* Cibles d'accroche / câblage (patch) */
+    .node.snap-target{
+      box-shadow: 0 0 0 5px rgba(138,43,226,.45), 0 0 36px rgba(138,43,226,.45);
+      filter: var(--glow);
+    }
+    .node.wire-source{
+      box-shadow: 0 0 0 5px rgba(0,234,255,.5), 0 0 36px rgba(0,234,255,.4);
+    }
+    .node.connectable{
+      outline: 2px dashed rgba(234,255,255,.25);
+      outline-offset: 2px;
+    }
+
     .node .label{
       pointer-events:none;line-height:1.1;width:100%;max-width:100%;overflow:hidden;word-break:break-word;hyphens:auto;
       text-shadow: 0 0 8px rgba(0,0,0,.45);
@@ -218,6 +231,9 @@
       transition: background .15s ease, filter .15s ease;
     }
     .side-item:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
+    /* Patch: style danger manquant */
+    .side-item.danger{ color:#ff9ca3 }
+    .side-item.danger:hover{ background: linear-gradient(90deg, rgba(255,70,70,.08), rgba(255,90,90,.06)); filter: drop-shadow(0 0 8px rgba(255,70,70,.35)); }
 
     .child-list{list-style:none;padding-left:10px;margin:6px 0 12px}
     .child-list li{
@@ -1275,7 +1291,7 @@
     exportBtn.addEventListener('click',()=>{ const data=buildState(); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='workspace.json'; a.click(); URL.revokeObjectURL(url); });
     importBtn.addEventListener('click',()=> fileInput.click());
     fileInput.addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; try{ const text=await f.text(); restoreState(JSON.parse(text)); } catch{ alert('Fichier invalide.'); } finally { fileInput.value=''; } });
-    resetBtn.addEventListener('click',()=>{ if(!confirm("Réinitialiser l'espace de travail ?")) return; localStorage.removeItem('workspaceState'); qLines().forEach(l=>l.remove()); world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); }); mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)'; mainNode.querySelector('.label').textContent='Cercle principal'; mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)'); idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera(); mainNode._tasks=[]; saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar(); });
+    resetBtn.addEventListener('click',()=>{ if(!confirm("Réinitialiser l'espace de travail ?")) return; localStorage.removeItem('workspaceState'); localStorage.removeItem('sphaira:workspaceState:v1'); qLines().forEach(l=>l.remove()); world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); }); mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)'; mainNode.querySelector('.label').textContent='Cercle principal'; mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)'); idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera(); mainNode._tasks=[]; saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar(); });
 
     /* Pan & sélection contrôlée */
     (function setupStagePan(){
@@ -1391,7 +1407,13 @@
       const edges=Array.from(qLines()).map(l=>({from:l.dataset.from,to:l.dataset.to}));
       return { idCounter, nodes, edges, camera };
     }
-    function saveState(){ const data=buildState(); localStorage.setItem('workspaceState',JSON.stringify(data)); refreshSidebar(); }
+    function saveState(){
+      const data=buildState();
+      localStorage.setItem('workspaceState', JSON.stringify(data));
+      /* Patch compatibilité ORIS : double clé */
+      localStorage.setItem('sphaira:workspaceState:v1', JSON.stringify(data));
+      refreshSidebar();
+    }
     function restoreState(data){
       qLines().forEach(l=>l.remove());
       world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); });
@@ -1420,7 +1442,8 @@
 
     /* Init */
     enableDrag(mainNode); mainNode._tasks = mainNode._tasks || []; fitLabelToNode(mainNode); refreshSidebar(); enableActionPanel(false); showActionsPanel(false); applyCamera();
-    const saved = localStorage.getItem('workspaceState'); if(saved){ try{ restoreState(JSON.parse(saved)); }catch{} } else { saveState(); }
+    const saved = localStorage.getItem('sphaira:workspaceState:v1') || localStorage.getItem('workspaceState');
+    if(saved){ try{ restoreState(JSON.parse(saved)); }catch{} } else { saveState(); }
   </script>
 </body>
 </html>
