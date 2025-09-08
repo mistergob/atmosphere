@@ -326,9 +326,33 @@
     @media (prefers-reduced-motion: reduce){
       *{ animation:none!important; transition:none!important }
     }
+
+    /* === AUTH LOCK (bloque SPHAIRA tant que non connecté à ATMOS) === */
+    .auth-block{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      background:rgba(3,6,16,.65); backdrop-filter:blur(3px); z-index:9999;
+    }
+    .auth-card{
+      width:min(520px,calc(100vw - 32px)); padding:16px; border-radius:16px;
+      border:1px solid rgba(255,255,255,.06);
+      background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+      box-shadow:0 20px 40px rgba(0,0,0,.45); color:var(--text);
+    }
+    .auth-card h3{ margin:0 0 8px; font-family:Orbitron,sans-serif; letter-spacing:.06em }
+
+    /* Affiche le bloqueur + désactive toute l’UI */
+    body.auth-locked .auth-block{ display:flex; }
+    body.auth-locked #world,
+    body.auth-locked .toolbar,
+    body.auth-locked .sidebar,
+    body.auth-locked .home-btn,
+    body.auth-locked .menu,
+    body.auth-locked .modal{
+      pointer-events:none; filter:grayscale(1) opacity(.35)
+    }
   </style>
 </head>
-<body>
+<body class="auth-locked">
   <!-- Menu 1 -->
   <aside id="sidebar" class="sidebar" aria-label="Navigation">
     <div id="principalList"></div>
@@ -516,79 +540,17 @@
     </div>
   </div>
 
-  <!-- ===== [AJOUT] Gate Auth (Option A) ===== -->
-  <div id="authGate" class="modal" style="display:none">
-    <div class="card">
-      <h3>Connexion requise</h3>
-      <p>Veuillez d’abord vous connecter sur <strong>ATMOS</strong>.</p>
-      <div class="actions">
-        <a id="goAtmos" class="btn">Aller sur ATMOS</a>
+  <!-- === AUTH BLOCKER (overlay) === -->
+  <div id="authBlock" class="auth-block" aria-live="polite" role="alert">
+    <div class="auth-card">
+      <h3>Connexion nécessaire</h3>
+      <p>Connectez-vous sur <strong>ATMOS</strong> pour utiliser SPHAIRA.</p>
+      <div class="actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <a id="authGoAtmos" class="btn">Se connecter sur ATMOS</a>
       </div>
     </div>
   </div>
 
-  <!-- ===== [AJOUT] Supabase + auto-login via session ATMOS ===== -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-  // --- CONFIG : même projet que ATMOS ---
-  const PROJECT_REF = "jlfvbggzdkkwrmpsamvz";
-  const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZnZiZ2d6ZGtrd3JtcHNhbXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjUyNjMsImV4cCI6MjA3Mjg0MTI2M30.kDbtNVQfHEVxRbA8jsAfLu7-6kDioTCG-nWVQ91gJIs`;
-
-  // ⚠️ adapte ce chemin si ATMOS n’est pas à /atmos/
-  const ATMOS_URL = location.origin + "/atmos/";
-
-  // Client Supabase (même storage que ATMOS)
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storage: window.localStorage,
-      storageKey: `sb-${PROJECT_REF}-auth-token` // identique à ATMOS
-    }
-  });
-
-  async function ensureLoggedInViaAtmos(){
-    const gate = document.getElementById('authGate');
-    const goAtmos = document.getElementById('goAtmos');
-    if (goAtmos) goAtmos.href = ATMOS_URL + "?r=" + encodeURIComponent(location.href);
-
-    // 1) Lire la session existante
-    const { data, error } = await supabase.auth.getSession();
-
-    if (data?.session) {
-      gate.style.display = "none";
-      return true;
-    }
-
-    // 2) Pas de session -> afficher le gate et écouter une co future
-    gate.style.display = "flex";
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) {
-        gate.style.display = "none";
-        sub.subscription.unsubscribe();
-      }
-    });
-
-    // (Optionnel) rediriger automatiquement après un court délai
-    setTimeout(() => {
-      if (goAtmos?.href) window.location.href = goAtmos.href;
-    }, 800);
-
-    return false;
-  }
-
-  // Lancer le contrôle au plus tôt
-  ensureLoggedInViaAtmos();
-
-  if (location.protocol === "file:") {
-    console.warn("⚠️ Ouvre via HTTPS (GitHub Pages/Netlify/serveur local).");
-  }
-  </script>
-
-  <!-- ===== Script principal SPHAIRA (inchangé) ===== -->
   <script>
     /* Elements */
     const stage = document.getElementById('stage');
@@ -1517,6 +1479,59 @@
     enableDrag(mainNode); mainNode._tasks = mainNode._tasks || []; fitLabelToNode(mainNode); refreshSidebar(); enableActionPanel(false); showActionsPanel(false); applyCamera();
     const saved = localStorage.getItem('sphaira:workspaceState:v1') || localStorage.getItem('workspaceState');
     if(saved){ try{ restoreState(JSON.parse(saved)); }catch{} } else { saveState(); }
+  </script>
+
+  <!-- === Supabase + Garde d'auth ATMOS === -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // --- CONFIG : même projet Supabase que ATMOS ---
+    const PROJECT_REF = "jlfvbggzdkkwrmpsamvz";
+    const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZnZiZ2d6ZGtrd3JtcHNhbXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjUyNjMsImV4cCI6MjA3Mjg0MTI2M30.kDbtNVQfHEVxRbA8jsAfLu7-6kDioTCG-nWVQ91gJIs";
+
+    // ⚙️ Ajuste le chemin d’ATMOS si besoin
+    const ATMOS_URL = location.origin + "/atmos/";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        storageKey: `sb-${PROJECT_REF}-auth-token` // identique à ATMOS
+      }
+    });
+
+    const authGo = document.getElementById('authGoAtmos');
+    if (authGo) authGo.href = ATMOS_URL + "?r=" + encodeURIComponent(location.href);
+
+    function setAuthLocked(on){
+      document.body.classList.toggle('auth-locked', !!on);
+    }
+
+    async function checkAuth(){
+      const { data } = await supabase.auth.getSession();
+      setAuthLocked(!data?.session);
+    }
+
+    // Réagit aux login/logout effectués sur ATMOS (même projet Supabase)
+    supabase.auth.onAuthStateChange((_evt, session) => setAuthLocked(!session));
+
+    // Coupe *toutes* les interactions quand c'est verrouillé (capture globale)
+    ['pointerdown','wheel','keydown','contextmenu'].forEach(ev=>{
+      window.addEventListener(ev, (e)=>{
+        if (document.body.classList.contains('auth-locked')) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, { capture:true, passive:false });
+    });
+
+    // Démarrage
+    checkAuth();
+    if (location.protocol === "file:") {
+      console.warn("⚠️ Ouvre via HTTPS (ou un serveur local) pour que l’auth fonctionne.");
+    }
   </script>
 </body>
 </html>
