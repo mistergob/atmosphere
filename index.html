@@ -1489,8 +1489,8 @@
     const SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZnZiZ2d6ZGtrd3JtcHNhbXZ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjUyNjMsImV4cCI6MjA3Mjg0MTI2M30.kDbtNVQfHEVxRbA8jsAfLu7-6kDioTCG-nWVQ91gJIs";
 
-    // ⚙️ Ajuste le chemin d’ATMOS si besoin
-    const ATMOS_URL = location.origin + "/atmos/";
+    // ⚠️ GitHub Pages sensible à la casse : "Atmos"
+    const ATMOS_URL = "https://mistergob.github.io/Atmos/";
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
@@ -1498,7 +1498,7 @@
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storage: window.localStorage,
-        storageKey: `sb-${PROJECT_REF}-auth-token` // identique à ATMOS
+        storageKey: `sb-${PROJECT_REF}-auth-token` // identique à ATMOS/NEXUS/ORIS
       }
     });
 
@@ -1517,10 +1517,12 @@
     // Réagit aux login/logout effectués sur ATMOS (même projet Supabase)
     supabase.auth.onAuthStateChange((_evt, session) => setAuthLocked(!session));
 
-    // Coupe *toutes* les interactions quand c'est verrouillé (capture globale)
+    // Coupe les interactions quand c'est verrouillé, mais laisse l'overlay cliquable
+    const authBlockEl = document.getElementById('authBlock');
     ['pointerdown','wheel','keydown','contextmenu'].forEach(ev=>{
       window.addEventListener(ev, (e)=>{
         if (document.body.classList.contains('auth-locked')) {
+          if (authBlockEl && authBlockEl.contains(e.target)) return; // autorise les clics sur le bouton "Se connecter"
           e.preventDefault();
           e.stopImmediatePropagation();
         }
