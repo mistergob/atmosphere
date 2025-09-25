@@ -242,14 +242,24 @@
   }
   .task-item small{color:var(--muted)}
   .task-row{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
-  .task-checkbox{display:flex;gap:12px;align-items:flex-start;cursor:pointer;flex:1}
-  .task-checkbox input[type="checkbox"]{margin-top:4px;accent-color:var(--primary);width:18px;height:18px}
+  .task-main{display:flex;gap:12px;align-items:flex-start;flex:1}
   .task-title{display:flex;flex-direction:column;gap:6px;font-weight:600;letter-spacing:.01em}
   .task-title .task-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
     border-radius:999px;background:rgba(0,234,255,.16);box-shadow:0 0 12px rgba(0,234,255,.35);font-size:13px}
   .task-name{display:flex;align-items:center;gap:8px;font-size:15px;line-height:1.35}
   .task-name del{color:var(--muted)}
-  .task-actions{display:flex;gap:8px}
+  .task-actions{display:flex;gap:8px;align-items:center}
+  .btn-validate{
+    padding:8px 14px;border:1px solid transparent;border-radius:10px;cursor:pointer;color:var(--text);
+    font-weight:600;letter-spacing:.01em;text-transform:uppercase;font-size:12px;
+    background:
+      linear-gradient(#0c1327,#0b1120) padding-box,
+      conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.35);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .btn-validate:hover{ transform: translateY(-1px); filter: var(--glow); }
+  .btn-validate.done{ opacity:.5; cursor:default; filter:none; transform:none; }
   .task-meta{display:flex;flex-wrap:wrap;gap:8px}
   .badge{
     display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
@@ -993,9 +1003,9 @@ function renderNodeTasksList(){
   }
   tasks.forEach(t=>{
     const div=document.createElement('div'); div.className='task-item';
-    const checked=t.done ? 'checked' : '';
+    const isDone=!!t.done;
     const titleRaw=escapeHtml(t.title);
-    const titleContent=t.done ? `<del>${titleRaw}</del>` : titleRaw;
+    const titleContent=isDone ? `<del>${titleRaw}</del>` : titleRaw;
     const objectiveNames=(t.objectiveIds||[]).map(id=>{
       const o=(node._objectives||[]).find(obj=>obj.id===id);
       return o ? o.title||'Objectif' : null;
@@ -1010,14 +1020,14 @@ function renderNodeTasksList(){
     ` : '';
     div.innerHTML=`
       <div class="task-row">
-        <label class="task-checkbox">
-          <input type="checkbox" class="task-done" ${checked}/>
+        <div class="task-main">
           <span class="task-title">
             <span class="task-icon">⭐</span>
             <span class="task-name">${titleContent}</span>
           </span>
-        </label>
+        </div>
         <div class="task-actions">
+          ${isDone ? `<button class="btn-validate done" type="button" disabled>Validée</button>` : `<button class="btn-validate" type="button">Valider</button>`}
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
           <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
         </div>
@@ -1027,13 +1037,17 @@ function renderNodeTasksList(){
     `;
     div.querySelector('.btn-edit').addEventListener('click',()=>openTaskEditor(node, t.id));
     div.querySelector('.btn-del').addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id); });
-    div.querySelector('.task-done').addEventListener('change',(e)=>{
-      updateTaskOnNode(node, t.id, {done:e.target.checked});
-      renderNodeTasksList();
-      if(isModalOpen(tasksModal)) renderGlobalTasksList();
-      if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
-      if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
-    });
+    const validateBtn=div.querySelector('.btn-validate');
+    if(validateBtn && !isDone){
+      validateBtn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        updateTaskOnNode(node, t.id, {done:true});
+        renderNodeTasksList();
+        if(isModalOpen(tasksModal)) renderGlobalTasksList();
+        if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+        if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
+      });
+    }
     const toggleBtn=div.querySelector('.task-toggle');
     const descEl=div.querySelector('.task-desc');
     if(toggleBtn && descEl){
@@ -1085,9 +1099,9 @@ function renderGlobalTasksList(){
     ensureObjArrays(node);
     const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
     const wrapper=document.createElement('div'); wrapper.className='task-item';
-    const checked=task.done ? 'checked' : '';
+    const isDone=!!task.done;
     const titleRaw=escapeHtml(task.title);
-    const titleContent=task.done ? `<del>${titleRaw}</del>` : titleRaw;
+    const titleContent=isDone ? `<del>${titleRaw}</del>` : titleRaw;
     const objectiveNames = (task.objectiveIds||[]).map(id=>{
       const o=(node._objectives||[]).find(obj=>obj.id===id);
       return o ? o.title||'Objectif' : null;
@@ -1102,14 +1116,14 @@ function renderGlobalTasksList(){
     ` : '';
     wrapper.innerHTML=`
       <div class="task-row">
-        <label class="task-checkbox">
-          <input type="checkbox" class="task-done" ${checked}/>
+        <div class="task-main">
           <span class="task-title">
             <span class="task-icon">⭐</span>
             <span class="task-name">${titleContent}</span>
           </span>
-        </label>
+        </div>
         <div class="task-actions">
+          ${isDone ? `<button class="btn-validate done" type="button" disabled>Validée</button>` : `<button class="btn-validate" type="button">Valider</button>`}
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
           <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
         </div>
@@ -1119,15 +1133,19 @@ function renderGlobalTasksList(){
     `;
     const delBtn=wrapper.querySelector('.btn-del');
     const editBtn=wrapper.querySelector('.btn-edit');
-    wrapper.querySelector('.task-done').addEventListener('change',(e)=>{
-      updateTaskOnNode(node, task.id, {done:e.target.checked});
-      renderGlobalTasksList();
-      if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
-      if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
-      if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
-    });
+    const validateBtn=wrapper.querySelector('.btn-validate');
+    if(validateBtn && !isDone){
+      validateBtn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        updateTaskOnNode(node, task.id, {done:true});
+        renderGlobalTasksList();
+        if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
+        if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+        if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
+      });
+    }
     wrapper.addEventListener('click',(event)=>{
-      if(event.target.closest('.task-done')||event.target.closest('.btn-edit')||event.target.closest('.btn-del')||event.target.closest('.task-toggle')) return;
+      if(event.target.closest('.btn-validate')||event.target.closest('.btn-edit')||event.target.closest('.btn-del')||event.target.closest('.task-toggle')) return;
       closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node);
     });
     delBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')){ deleteTaskFromNode(node, task.id); }});
