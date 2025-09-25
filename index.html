@@ -425,7 +425,7 @@
   <div id="objectivesModal" class="modal" aria-hidden="true">
     <div class="card">
       <h3>Objectifs</h3>
-      <div class="row"><label>Cercle</label><select id="objectiveGlobalNodeSelect"></select></div>
+      <div class="row"><label>Filtrer par cercle</label><select id="objectiveGlobalNodeSelect"></select></div>
       <div class="actions">
         <button id="objectiveGlobalAdd" class="btn">Nouvel objectif</button>
       </div>
@@ -1214,7 +1214,7 @@ function renderObjectiveEditor(){
 
 function populateObjectiveGlobalNodeSelect(){
   if(!objectiveGlobalNodeSelect) return;
-  const options=[];
+  const options=[{id:'',name:'Tous les cercles'}];
   world.querySelectorAll('.node').forEach(n=>{
     const id=n.dataset.id;
     const name=n.querySelector('.label')?.textContent?.trim() || id;
@@ -1226,9 +1226,8 @@ function populateObjectiveGlobalNodeSelect(){
     const opt=document.createElement('option');
     opt.value=id; opt.textContent=name; objectiveGlobalNodeSelect.appendChild(opt);
   });
-  const fallback=currentNode?.dataset?.id || (options[0]?.id||'');
-  const target=options.some(o=>o.id===previous) ? previous : fallback;
-  if(target) objectiveGlobalNodeSelect.value=target;
+  const target=options.some(o=>o.id===previous) ? previous : '';
+  objectiveGlobalNodeSelect.value=target;
 }
 function getObjectiveModalNode(){
   const nodeId=objectiveGlobalNodeSelect?.value;
@@ -1237,19 +1236,35 @@ function getObjectiveModalNode(){
 }
 function renderGlobalObjectivesList(){
   if(!objectivesContainer) return;
-  const node=getObjectiveModalNode();
+  const filterId=objectiveGlobalNodeSelect?.value || '';
+  const nodes = filterId
+    ? [world.querySelector(`[data-id="${CSS.escape(filterId)}"]`)].filter(Boolean)
+    : Array.from(world.querySelectorAll('.node'));
   objectivesContainer.innerHTML='';
-  if(!node){
+  if(filterId && nodes.length===0){
     const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Sélectionnez un cercle pour afficher ses objectifs.';
     objectivesContainer.appendChild(empty); return;
   }
-  ensureObjArrays(node);
-  if(node._objectives.length===0){
-    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucun objectif pour ce cercle.';
+  const entries=[];
+  nodes.forEach(node=>{
+    ensureObjArrays(node);
+    (node._objectives||[]).forEach(o=>entries.push({node,objective:o}));
+  });
+  if(entries.length===0){
+    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent=filterId ? 'Aucun objectif pour ce cercle.' : 'Aucun objectif enregistré.';
     objectivesContainer.appendChild(empty); return;
   }
-  const nodeName=node.querySelector('.label')?.textContent?.trim() || node.dataset.id;
-  node._objectives.forEach(o=>{
+  const getNodeName=(node)=> node.querySelector('.label')?.textContent?.trim() || node.dataset.id;
+  entries.sort((a,b)=>{
+    const nameA=getNodeName(a.node).toLowerCase();
+    const nameB=getNodeName(b.node).toLowerCase();
+    if(nameA!==nameB) return nameA.localeCompare(nameB);
+    const titleA=(a.objective.title||'').toLowerCase();
+    const titleB=(b.objective.title||'').toLowerCase();
+    return titleA.localeCompare(titleB);
+  });
+  entries.forEach(({node,objective:o})=>{
+    const nodeName=getNodeName(node);
     const {done,total,ratio}=computeProgress(node,o);
     const status = o.completed ? `✅ Terminé${o.completedAt?` le ${o.completedAt}`:''}` : (total>0 ? `${done}/${total} terminé(s)` : (o.completed?'✅ Terminé':'⏳ En cours'));
     const taskNames=(o.taskIds||[]).map(id=>{
