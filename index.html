@@ -227,9 +227,44 @@
   .btn:hover{ transform: translateY(-2px); filter: var(--glow); }
   .btn.secondary{opacity:.9}
 
-  .list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-  .task-item{ border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);color:var(--text) }
+  .list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+  .list::-webkit-scrollbar{width:6px}
+  .list::-webkit-scrollbar-track{background:rgba(255,255,255,.04);border-radius:999px}
+  .list::-webkit-scrollbar-thumb{background:rgba(0,234,255,.35);border-radius:999px}
+  #nodeTasksList,#tasksContainer{max-height:320px;overflow:auto;padding-right:4px;scrollbar-color:rgba(0,234,255,.45) rgba(255,255,255,.05)}
+  .task-item{
+    position:relative;display:flex;flex-direction:column;gap:10px;padding:14px 16px;
+    border-radius:14px;border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(140deg, rgba(255,255,255,.05), rgba(5,10,30,.65));
+    box-shadow:0 18px 32px rgba(0,0,0,.25);
+    backdrop-filter:blur(12px);
+    color:var(--text);
+  }
   .task-item small{color:var(--muted)}
+  .task-row{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
+  .task-checkbox{display:flex;gap:12px;align-items:flex-start;cursor:pointer;flex:1}
+  .task-checkbox input[type="checkbox"]{margin-top:4px;accent-color:var(--primary);width:18px;height:18px}
+  .task-title{display:flex;flex-direction:column;gap:6px;font-weight:600;letter-spacing:.01em}
+  .task-title .task-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;
+    border-radius:999px;background:rgba(0,234,255,.16);box-shadow:0 0 12px rgba(0,234,255,.35);font-size:13px}
+  .task-name{display:flex;align-items:center;gap:8px;font-size:15px;line-height:1.35}
+  .task-name del{color:var(--muted)}
+  .task-actions{display:flex;gap:8px}
+  .task-meta{display:flex;flex-wrap:wrap;gap:8px}
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    background:rgba(0,234,255,.12);color:var(--text);font-size:12px;font-weight:500;letter-spacing:.03em;
+  }
+  .badge small{color:inherit}
+  .badge-date{background:rgba(138,43,226,.14)}
+  .badge-objective{background:rgba(255,215,0,.14)}
+  .badge-node{background:rgba(0,234,255,.18)}
+  .task-dot{width:9px;height:9px;border-radius:999px;background:var(--dot,#00EAFF);box-shadow:0 0 12px color-mix(in srgb, var(--dot,#00EAFF), transparent 30%);}
+  .task-desc{margin-top:4px;line-height:1.45;color:var(--text);background:rgba(255,255,255,.05);padding:10px 12px;border-radius:10px}
+  .task-toggle{align-self:flex-start;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);
+    color:var(--text);border-radius:999px;padding:6px 12px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;
+    transition:filter .15s ease,transform .15s ease}
+  .task-toggle:hover{filter:var(--glow);transform:translateY(-1px)}
   .dot{ display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle }
   .progress{
     height:8px;border-radius:9999px; background:rgba(255,255,255,.12); overflow:hidden
@@ -958,30 +993,37 @@ function renderNodeTasksList(){
   }
   tasks.forEach(t=>{
     const div=document.createElement('div'); div.className='task-item';
-    const checked = t.done ? 'checked' : '';
-    const titleHtml = t.done ? `<del>⭐ ${escapeHtml(t.title)}</del>` : `⭐ ${escapeHtml(t.title)}`;
-    const objectiveNames = (t.objectiveIds||[]).map(id=>{
+    const checked=t.done ? 'checked' : '';
+    const titleRaw=escapeHtml(t.title);
+    const titleContent=t.done ? `<del>${titleRaw}</del>` : titleRaw;
+    const objectiveNames=(t.objectiveIds||[]).map(id=>{
       const o=(node._objectives||[]).find(obj=>obj.id===id);
       return o ? o.title||'Objectif' : null;
     }).filter(Boolean).map(escapeHtml);
-    const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
-    const descHtml = t.desc ? `<div class="task-desc" hidden style="margin-top:6px">${escapeHtml(t.desc)}</div>` : '';
+    const metaBadges=[];
+    if(t.start || t.end){ metaBadges.push(`<span class="badge badge-date">${escapeHtml(fmtRange(t.start,t.end))}</span>`); }
+    objectiveNames.forEach(name=>metaBadges.push(`<span class="badge badge-objective">${name}</span>`));
+    const metaHtml=metaBadges.length ? `<div class="task-meta">${metaBadges.join('')}</div>` : '';
+    const descHtml=t.desc ? `
+      <div class="task-desc" hidden>${escapeHtml(t.desc)}</div>
+      <button type="button" class="task-toggle" aria-expanded="false">Afficher la note</button>
+    ` : '';
     div.innerHTML=`
-      <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
-        <div class="task-main" style="flex:1;">
-          <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-            <input type="checkbox" class="task-done" ${checked}/>
-            <strong>${titleHtml}</strong>
-          </label>
-          ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
-          ${objectivesHtml}
-          ${descHtml}
-        </div>
-        <div style="display:flex; gap:6px;">
+      <div class="task-row">
+        <label class="task-checkbox">
+          <input type="checkbox" class="task-done" ${checked}/>
+          <span class="task-title">
+            <span class="task-icon">⭐</span>
+            <span class="task-name">${titleContent}</span>
+          </span>
+        </label>
+        <div class="task-actions">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
           <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
         </div>
       </div>
+      ${metaHtml}
+      ${descHtml}
     `;
     div.querySelector('.btn-edit').addEventListener('click',()=>openTaskEditor(node, t.id));
     div.querySelector('.btn-del').addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id); });
@@ -992,12 +1034,16 @@ function renderNodeTasksList(){
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
       if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
+    const toggleBtn=div.querySelector('.task-toggle');
     const descEl=div.querySelector('.task-desc');
-    if(descEl){
-      const main=div.querySelector('.task-main');
-      main.addEventListener('click',(event)=>{
-        if(event.target.closest('.task-done')||event.target.closest('.btn-edit')||event.target.closest('.btn-del')) return;
-        descEl.hidden=!descEl.hidden;
+    if(toggleBtn && descEl){
+      toggleBtn.addEventListener('click',(event)=>{
+        event.stopPropagation();
+        const expanded=toggleBtn.getAttribute('aria-expanded')==='true';
+        const next=!expanded;
+        descEl.hidden=!next;
+        toggleBtn.setAttribute('aria-expanded', next?'true':'false');
+        toggleBtn.textContent=next?'Masquer la note':'Afficher la note';
       });
     }
     nodeTasksList.appendChild(div);
@@ -1039,32 +1085,38 @@ function renderGlobalTasksList(){
     ensureObjArrays(node);
     const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
     const wrapper=document.createElement('div'); wrapper.className='task-item';
-    const checked = task.done ? 'checked' : '';
-    const titleHtml = task.done ? `<del>⭐ ${escapeHtml(task.title)}</del>` : `⭐ ${escapeHtml(task.title)}`;
+    const checked=task.done ? 'checked' : '';
+    const titleRaw=escapeHtml(task.title);
+    const titleContent=task.done ? `<del>${titleRaw}</del>` : titleRaw;
     const objectiveNames = (task.objectiveIds||[]).map(id=>{
       const o=(node._objectives||[]).find(obj=>obj.id===id);
       return o ? o.title||'Objectif' : null;
     }).filter(Boolean).map(escapeHtml);
-    const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
+    const metaBadges=[`<span class="badge badge-node"><span class="task-dot" style="--dot:${col}"></span>${escapeHtml(nodeName)}</span>`];
+    if(task.start || task.end){ metaBadges.push(`<span class="badge badge-date">${escapeHtml(fmtRange(task.start,task.end))}</span>`); }
+    objectiveNames.forEach(name=>metaBadges.push(`<span class="badge badge-objective">${name}</span>`));
+    const metaHtml=metaBadges.length ? `<div class="task-meta">${metaBadges.join('')}</div>` : '';
+    const descHtml=task.desc ? `
+      <div class="task-desc" hidden>${escapeHtml(task.desc)}</div>
+      <button type="button" class="task-toggle" aria-expanded="false">Afficher la note</button>
+    ` : '';
     wrapper.innerHTML=`
-      <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
-        <div class="task-main" style="flex:1; cursor:pointer">
-          <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-            <input type="checkbox" class="task-done" ${checked}/>
-            <strong><span class="dot" style="background:${col}"></span>${titleHtml}</strong>
-          </label>
-          <div><small>Sur : ${escapeHtml(nodeName)}</small></div>
-          ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : ''}
-          ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : ''}
-          ${objectivesHtml}
-        </div>
-        <div style="display:flex; gap:6px;">
+      <div class="task-row">
+        <label class="task-checkbox">
+          <input type="checkbox" class="task-done" ${checked}/>
+          <span class="task-title">
+            <span class="task-icon">⭐</span>
+            <span class="task-name">${titleContent}</span>
+          </span>
+        </label>
+        <div class="task-actions">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
           <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
         </div>
       </div>
+      ${metaHtml}
+      ${descHtml}
     `;
-    const main=wrapper.querySelector('.task-main');
     const delBtn=wrapper.querySelector('.btn-del');
     const editBtn=wrapper.querySelector('.btn-edit');
     wrapper.querySelector('.task-done').addEventListener('change',(e)=>{
@@ -1074,9 +1126,24 @@ function renderGlobalTasksList(){
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
       if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
-    main.addEventListener('click',()=>{ closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node); });
+    wrapper.addEventListener('click',(event)=>{
+      if(event.target.closest('.task-done')||event.target.closest('.btn-edit')||event.target.closest('.btn-del')||event.target.closest('.task-toggle')) return;
+      closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node);
+    });
     delBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')){ deleteTaskFromNode(node, task.id); }});
     editBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); closeTasksListModal(); openTaskEditor(node, task.id); });
+    const toggleBtn=wrapper.querySelector('.task-toggle');
+    const descEl=wrapper.querySelector('.task-desc');
+    if(toggleBtn && descEl){
+      toggleBtn.addEventListener('click',(event)=>{
+        event.stopPropagation();
+        const expanded=toggleBtn.getAttribute('aria-expanded')==='true';
+        const next=!expanded;
+        descEl.hidden=!next;
+        toggleBtn.setAttribute('aria-expanded', next?'true':'false');
+        toggleBtn.textContent=next?'Masquer la note':'Afficher la note';
+      });
+    }
     tasksContainer.appendChild(wrapper);
   });
 }
