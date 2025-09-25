@@ -201,7 +201,7 @@
     transition: transform .2s ease, filter .2s ease;
   }
   .home-btn:hover{ transform: translateY(-2px); filter: var(--glow); }
-  #homeBtn{right:16px} #tasksBtn{right:70px}
+  #homeBtn{right:16px} #tasksBtn{right:70px} #objectivesBtn{right:124px}
 
   .modal{position:fixed;inset:0;background:rgba(3,6,16,.55);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter: blur(2px)}
   .modal .card{
@@ -309,7 +309,6 @@
         <button id="iconObjectiveBtn" class="icon-btn" title="Objectifs (🎯)" aria-label="Objectifs">🎯</button>
         <button id="iconTaskBtn" class="icon-btn star" title="Ajouter/éditer des tâches" aria-label="Ajouter/éditer des tâches">⭐</button>
         <button id="iconWireBtn" class="icon-btn" title="Connecter à…" aria-label="Connecter à…">🔗</button>
-        <button id="iconCenterBtn" class="icon-btn" title="Centrer sur le cercle" aria-label="Centrer sur le cercle">🎯</button>
         <button id="iconDeleteBtn" class="icon-btn" title="Supprimer le cercle" aria-label="Supprimer le cercle">🗑️</button>
       </div>
     </div>
@@ -353,6 +352,7 @@
   </div>
 
   <!-- Boutons -->
+  <button id="objectivesBtn" class="home-btn" title="Voir les objectifs">🎯</button>
   <button id="tasksBtn" class="home-btn" title="Voir toutes les tâches">⭐</button>
   <button id="homeBtn" class="home-btn" title="Recentrer sur le cœur">♥</button>
 
@@ -364,6 +364,7 @@
       <div class="row"><label>Note</label><textarea id="taskDesc" rows="4" placeholder="Description ou notes"></textarea></div>
       <div class="row"><label>Début</label><input id="taskStart" type="date"/></div>
       <div class="row"><label>Fin</label><input id="taskEnd" type="date"/></div>
+      <div class="row" style="align-items:flex-start"><label>Objectifs</label><div id="taskObjectivesChecklist" style="flex:1;display:grid;gap:6px;"></div></div>
 
       <h3>Tâches du cercle</h3>
       <div id="nodeTasksList" class="list"></div>
@@ -384,6 +385,7 @@
       <div class="row"><label>Note</label><textarea id="taskGlobalDesc" rows="3" placeholder="Description ou notes"></textarea></div>
       <div class="row"><label>Début</label><input id="taskGlobalStart" type="date"/></div>
       <div class="row"><label>Fin</label><input id="taskGlobalEnd" type="date"/></div>
+      <div class="row" style="align-items:flex-start"><label>Objectifs</label><div id="taskGlobalObjectivesChecklist" style="flex:1; display:grid; gap:6px;"></div></div>
       <div class="actions">
         <button id="taskGlobalReset" class="btn secondary">Annuler</button>
         <button id="taskGlobalSave" class="btn">Ajouter</button>
@@ -419,6 +421,19 @@
     </div>
   </div>
 
+  <!-- Modale Objectifs (globale) -->
+  <div id="objectivesModal" class="modal" aria-hidden="true">
+    <div class="card">
+      <h3>Objectifs</h3>
+      <div class="row"><label>Cercle</label><select id="objectiveGlobalNodeSelect"></select></div>
+      <div class="actions">
+        <button id="objectiveGlobalAdd" class="btn">Nouvel objectif</button>
+      </div>
+      <div id="objectivesContainer" class="list"></div>
+      <div class="actions"><button id="objectivesClose" class="btn">Fermer</button></div>
+    </div>
+  </div>
+
 <script>
 /* ========== Elements ========== */
 const stage=document.getElementById('stage');
@@ -434,6 +449,7 @@ const fileInput=document.getElementById('fileInput');
 const homeBtn=document.getElementById('homeBtn');
 const wireModeBtn=document.getElementById('wireModeBtn');
 const tasksBtn=document.getElementById('tasksBtn');
+const objectivesBtn=document.getElementById('objectivesBtn');
 
 /* Menu 3 controls */
 const titleInput3=document.getElementById('titleInput3');
@@ -444,7 +460,6 @@ const boldBtn=document.getElementById('boldBtn');
 const italicBtn=document.getElementById('italicBtn');
 const underlineBtn=document.getElementById('underlineBtn');
 const iconWireBtn=document.getElementById('iconWireBtn');
-const iconCenterBtn=document.getElementById('iconCenterBtn');
 const iconDeleteBtn=document.getElementById('iconDeleteBtn');
 const iconTaskBtn=document.getElementById('iconTaskBtn');
 const iconObjectiveBtn=document.getElementById('iconObjectiveBtn');
@@ -485,6 +500,7 @@ const taskTitle=document.getElementById('taskTitle');
 const taskDesc=document.getElementById('taskDesc');
 const taskStart=document.getElementById('taskStart');
 const taskEnd=document.getElementById('taskEnd');
+const taskObjectivesChecklist=document.getElementById('taskObjectivesChecklist');
 const taskSave=document.getElementById('taskSave');
 const taskCancel=document.getElementById('taskCancel');
 const nodeTasksList=document.getElementById('nodeTasksList');
@@ -498,6 +514,7 @@ const taskGlobalTitle=document.getElementById('taskGlobalTitle');
 const taskGlobalDesc=document.getElementById('taskGlobalDesc');
 const taskGlobalStart=document.getElementById('taskGlobalStart');
 const taskGlobalEnd=document.getElementById('taskGlobalEnd');
+const taskGlobalObjectivesChecklist=document.getElementById('taskGlobalObjectivesChecklist');
 const taskGlobalSave=document.getElementById('taskGlobalSave');
 const taskGlobalReset=document.getElementById('taskGlobalReset');
 
@@ -510,6 +527,11 @@ const objSave=document.getElementById('objSave');
 const objCancel=document.getElementById('objCancel');
 const objTasksChecklist=document.getElementById('objTasksChecklist');
 const objectivesList=document.getElementById('objectivesList');
+const objectivesModal=document.getElementById('objectivesModal');
+const objectiveGlobalNodeSelect=document.getElementById('objectiveGlobalNodeSelect');
+const objectivesContainer=document.getElementById('objectivesContainer');
+const objectivesClose=document.getElementById('objectivesClose');
+const objectiveGlobalAdd=document.getElementById('objectiveGlobalAdd');
 
 /* ========== State ========== */
 let currentNode=null;
@@ -713,16 +735,25 @@ function updateTaskBadge(node){
   b.addEventListener('pointerdown',e=>e.stopPropagation()); b.addEventListener('click',e=>e.stopPropagation());
   node.appendChild(b);
 }
-function addTaskToNode(node, title, desc, start, end){
-  node._tasks=node._tasks||[];
+function addTaskToNode(node, title, desc, start, end, objectiveIds=[]){
+  ensureObjArrays(node);
   if(node._tasks.length>=10){ alert('Limite de 10 tâches par cercle atteinte.'); return false; }
-  node._tasks.push({ id:'t'+Date.now()+Math.random().toString(36).slice(2,6), title, desc, start, end, done:false });
-  updateTaskBadge(node); saveState(); return true;
+  const id='t'+Date.now()+Math.random().toString(36).slice(2,6);
+  const clean=Array.from(new Set((objectiveIds||[])));
+  const task={ id, title, desc, start, end, done:false, objectiveIds:[] };
+  node._tasks.push(task);
+  applyTaskObjectiveLinks(node, id, clean);
+  updateTaskBadge(node); updateObjectiveBadge(node); recomputeAllObjectives(node);
+  return true;
 }
 function updateTaskOnNode(node, taskId, patch){
-  if(!node||!node._tasks) return;
+  ensureObjArrays(node);
   const t=node._tasks.find(x=>x.id===taskId); if(!t) return;
-  Object.assign(t,patch); updateTaskBadge(node); saveState();
+  Object.assign(t,patch);
+  if(patch && Object.prototype.hasOwnProperty.call(patch,'objectiveIds')){
+    applyTaskObjectiveLinks(node, taskId, patch.objectiveIds||[]);
+  }
+  updateTaskBadge(node); updateObjectiveBadge(node); recomputeAllObjectives(node);
 }
 function deleteTaskFromNode(node, taskId){
   if(!node||!node._tasks) return;
@@ -731,10 +762,11 @@ function deleteTaskFromNode(node, taskId){
   if(Array.isArray(node._objectives)){
     node._objectives.forEach(o=>{ o.taskIds = (o.taskIds||[]).filter(id=>id!==taskId); });
   }
-  updateTaskBadge(node); saveState();
+  updateTaskBadge(node); updateObjectiveBadge(node); recomputeAllObjectives(node);
   if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
   if(isModalOpen(tasksModal)) renderGlobalTasksList();
   if(objectiveEditorNode===node && isModalOpen(objectiveEditor)) renderObjectiveEditor();
+  if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
 }
 
 /* Objectifs */
@@ -748,26 +780,42 @@ function updateObjectiveBadge(node){
 function ensureObjArrays(node){
   if(!node._objectives) node._objectives=[];
   if(!node._tasks) node._tasks=[];
+  node._objectives.forEach(o=>{ if(!Array.isArray(o.taskIds)) o.taskIds=[]; });
+  node._tasks.forEach(t=>{ if(!Array.isArray(t.objectiveIds)) t.objectiveIds=[]; });
 }
 function addObjectiveToNode(node, {title, desc, due, taskIds}){
   ensureObjArrays(node);
-  node._objectives.push({ id:'o'+Date.now()+Math.random().toString(36).slice(2,6), title, desc, due, taskIds:[...(taskIds||[])], completed:false, completedAt:null });
-  updateObjectiveBadge(node); saveState();
+  const id='o'+Date.now()+Math.random().toString(36).slice(2,6);
+  const objective={ id, title, desc, due, taskIds:[...(taskIds||[])], completed:false, completedAt:null };
+  node._objectives.push(objective);
+  applyObjectiveTaskLinks(node, id, objective.taskIds);
+  recomputeAllObjectives(node);
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
 }
 function updateObjectiveOnNode(node, objId, patch){
   ensureObjArrays(node);
   const o=node._objectives.find(x=>x.id===objId); if(!o) return;
   const prevCompleted=o.completed;
   Object.assign(o,patch);
+  if(patch && Object.prototype.hasOwnProperty.call(patch,'taskIds')){
+    applyObjectiveTaskLinks(node, objId, o.taskIds||[]);
+  }
   recomputeObjectiveCompletion(node, o);
   if(!prevCompleted && o.completed){ alert(`🎯 Objectif atteint : « ${o.title} »`); }
   updateObjectiveBadge(node); saveState();
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
 }
 function deleteObjectiveFromNode(node, objId){
   ensureObjArrays(node);
   node._objectives = node._objectives.filter(o=>o.id!==objId);
+  (node._tasks||[]).forEach(t=>{ t.objectiveIds = (t.objectiveIds||[]).filter(id=>id!==objId); });
   updateObjectiveBadge(node); saveState();
   if(objectiveEditorNode===node && isModalOpen(objectiveEditor)) renderObjectiveEditor();
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
+  if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
 }
 function recomputeObjectiveCompletion(node, objective){
   const tasks=node._tasks||[];
@@ -791,6 +839,40 @@ function recomputeAllObjectives(node){
     if(was===false && o.completed===true){ alert(`🎯 Objectif atteint : « ${o.title} »`); }
   });
   updateObjectiveBadge(node); saveState();
+  if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
+}
+
+function applyTaskObjectiveLinks(node, taskId, objectiveIds){
+  ensureObjArrays(node);
+  const task=(node._tasks||[]).find(t=>t.id===taskId);
+  if(!task) return;
+  const available=(node._objectives||[]).map(o=>o.id);
+  const clean=Array.from(new Set((objectiveIds||[]).filter(id=>available.includes(id))));
+  task.objectiveIds=clean;
+  (node._objectives||[]).forEach(o=>{
+    if(clean.includes(o.id)){ if(!o.taskIds.includes(taskId)) o.taskIds.push(taskId); }
+    else{ o.taskIds=o.taskIds.filter(id=>id!==taskId); }
+  });
+}
+
+function applyObjectiveTaskLinks(node, objectiveId, taskIds){
+  ensureObjArrays(node);
+  const objective=(node._objectives||[]).find(o=>o.id===objectiveId);
+  if(!objective) return;
+  const available=(node._tasks||[]).map(t=>t.id);
+  const clean=Array.from(new Set((taskIds||[]).filter(id=>available.includes(id))));
+  objective.taskIds=clean;
+  (node._tasks||[]).forEach(task=>{
+    if(clean.includes(task.id)){ if(!task.objectiveIds.includes(objectiveId)) task.objectiveIds.push(objectiveId); }
+    else{ task.objectiveIds=task.objectiveIds.filter(id=>id!==objectiveId); }
+  });
+}
+
+function syncAllTaskObjectiveLinks(node){
+  ensureObjArrays(node);
+  (node._objectives||[]).forEach(o=>{ o.taskIds=o.taskIds.filter(id=>(node._tasks||[]).some(t=>t.id===id)); });
+  (node._tasks||[]).forEach(t=>{ t.objectiveIds=t.objectiveIds.filter(id=>(node._objectives||[]).some(o=>o.id===id)); });
+  (node._objectives||[]).forEach(o=>applyObjectiveTaskLinks(node, o.id, o.taskIds));
 }
 
 /* ====== Task editor (node) ====== */
@@ -804,13 +886,46 @@ function openTaskEditor(forNode, taskIdToEdit=null){
     const t=(forNode._tasks||[]).find(x=>x.id===taskIdToEdit);
     if(t){ editingTaskId=t.id; taskTitle.value=t.title||''; taskDesc.value=t.desc||''; taskStart.value=t.start||''; taskEnd.value=t.end||''; }
   }
+  renderTaskObjectivesChecklist();
   renderNodeTasksList();
   taskEditor.style.display='flex'; taskEditor.setAttribute('aria-hidden','false');
   (taskTitle.value ? taskDesc : taskTitle).focus();
 }
 function closeTaskEditor(){ taskEditor.style.display='none'; taskEditor.setAttribute('aria-hidden','true'); taskEditorNode=null; editingTaskId=null; }
+function buildObjectiveChecklist(node, container, selectedIds, emptyMessage){
+  if(!container) return;
+  container.innerHTML='';
+  if(!node){ container.textContent=emptyMessage||'Sélectionnez un cercle.'; return; }
+  ensureObjArrays(node);
+  const objectives=node._objectives||[];
+  if(objectives.length===0){ container.textContent=emptyMessage||'Aucun objectif.'; return; }
+  const selected=new Set(selectedIds||[]);
+  objectives.forEach(obj=>{
+    const row=document.createElement('label');
+    row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.cursor='pointer';
+    const checked=selected.has(obj.id)?'checked':'';
+    row.innerHTML=`<input type="checkbox" value="${obj.id}" ${checked}/> ${escapeHtml(obj.title||'Objectif')}`;
+    container.appendChild(row);
+  });
+}
+function getCheckedObjectiveIds(container){
+  return Array.from(container?.querySelectorAll('input[type="checkbox"]')||[]).filter(cb=>cb.checked).map(cb=>cb.value);
+}
+function renderTaskObjectivesChecklist(){
+  if(!taskObjectivesChecklist) return;
+  if(!taskEditorNode){ taskObjectivesChecklist.textContent='Sélectionnez un cercle.'; return; }
+  const selected=editingTaskId ? (taskEditorNode._tasks.find(t=>t.id===editingTaskId)?.objectiveIds||[]) : [];
+  buildObjectiveChecklist(taskEditorNode, taskObjectivesChecklist, selected, 'Aucun objectif pour ce cercle.');
+}
+function renderTaskGlobalObjectivesChecklist(selectedIds=[]){
+  const nodeId=taskGlobalNodeSelect?.value;
+  const node=nodeId ? world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`) : null;
+  const clean=Array.isArray(selectedIds)?selectedIds:[];
+  buildObjectiveChecklist(node, taskGlobalObjectivesChecklist, clean, node ? 'Aucun objectif pour ce cercle.' : 'Sélectionnez un cercle.');
+}
 function renderNodeTasksList(){
   const node=taskEditorNode; nodeTasksList.innerHTML='';
+  if(node) ensureObjArrays(node);
   const tasks=(node && node._tasks)?node._tasks:[];
   if(tasks.length===0){
     const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucune tâche pour ce cercle.'; nodeTasksList.appendChild(empty); return;
@@ -819,6 +934,11 @@ function renderNodeTasksList(){
     const div=document.createElement('div'); div.className='task-item';
     const checked = t.done ? 'checked' : '';
     const titleHtml = t.done ? `<del>⭐ ${escapeHtml(t.title)}</del>` : `⭐ ${escapeHtml(t.title)}`;
+    const objectiveNames = (t.objectiveIds||[]).map(id=>{
+      const o=(node._objectives||[]).find(obj=>obj.id===id);
+      return o ? o.title||'Objectif' : null;
+    }).filter(Boolean).map(escapeHtml);
+    const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
     div.innerHTML=`
       <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
         <div class="task-main" style="flex:1;">
@@ -828,6 +948,7 @@ function renderNodeTasksList(){
           </label>
           ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
           ${t.desc ? `<div style="margin-top:6px">${escapeHtml(t.desc)}</div>` : ''}
+          ${objectivesHtml}
         </div>
         <div style="display:flex; gap:6px;">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
@@ -840,9 +961,9 @@ function renderNodeTasksList(){
     div.querySelector('.task-done').addEventListener('change',(e)=>{
       updateTaskOnNode(node, t.id, {done:e.target.checked});
       renderNodeTasksList();
-      recomputeAllObjectives(node); // pourquoi: mise à jour auto des objectifs
       if(isModalOpen(tasksModal)) renderGlobalTasksList();
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+      if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
     nodeTasksList.appendChild(div);
   });
@@ -852,9 +973,11 @@ taskSave.addEventListener('click',()=>{
   const t=taskTitle.value.trim(), d=taskDesc.value.trim(), s=taskStart.value||'', e=taskEnd.value||'';
   if(!t){ alert('Veuillez saisir un titre.'); return; }
   if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
-  if(editingTaskId){ updateTaskOnNode(currentNode, editingTaskId, {title:t, desc:d, start:s, end:e}); editingTaskId=null; }
-  else{ const ok=addTaskToNode(currentNode, t, d, s, e); if(!ok) return; }
-  renderNodeTasksList(); if(isModalOpen(tasksModal)) renderGlobalTasksList();
+  const selectedObjectiveIds=getCheckedObjectiveIds(taskObjectivesChecklist);
+  if(editingTaskId){ updateTaskOnNode(currentNode, editingTaskId, {title:t, desc:d, start:s, end:e, objectiveIds:selectedObjectiveIds}); editingTaskId=null; }
+  else{ const ok=addTaskToNode(currentNode, t, d, s, e, selectedObjectiveIds); if(!ok) return; }
+  renderNodeTasksList(); renderTaskObjectivesChecklist(); if(isModalOpen(tasksModal)) renderGlobalTasksList();
+  if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
   taskTitle.value=''; taskDesc.value=''; taskStart.value=''; taskEnd.value=''; taskTitle.focus();
 });
 taskCancel.addEventListener('click',closeTaskEditor);
@@ -877,10 +1000,16 @@ function renderGlobalTasksList(){
   const items=gatherAllTasks(); tasksContainer.innerHTML='';
   if(items.length===0){ const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucune tâche.'; tasksContainer.appendChild(empty); return; }
   items.forEach(({node,nodeName,task})=>{
+    ensureObjArrays(node);
     const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
     const wrapper=document.createElement('div'); wrapper.className='task-item';
     const checked = task.done ? 'checked' : '';
     const titleHtml = task.done ? `<del>⭐ ${escapeHtml(task.title)}</del>` : `⭐ ${escapeHtml(task.title)}`;
+    const objectiveNames = (task.objectiveIds||[]).map(id=>{
+      const o=(node._objectives||[]).find(obj=>obj.id===id);
+      return o ? o.title||'Objectif' : null;
+    }).filter(Boolean).map(escapeHtml);
+    const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
     wrapper.innerHTML=`
       <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
         <div class="task-main" style="flex:1; cursor:pointer">
@@ -891,6 +1020,7 @@ function renderGlobalTasksList(){
           <div><small>Sur : ${escapeHtml(nodeName)}</small></div>
           ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : ''}
           ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : ''}
+          ${objectivesHtml}
         </div>
         <div style="display:flex; gap:6px;">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
@@ -905,8 +1035,8 @@ function renderGlobalTasksList(){
       updateTaskOnNode(node, task.id, {done:e.target.checked});
       renderGlobalTasksList();
       if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
-      recomputeAllObjectives(node);
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+      if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
     main.addEventListener('click',()=>{ closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node); });
     delBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')){ deleteTaskFromNode(node, task.id); }});
@@ -914,17 +1044,23 @@ function renderGlobalTasksList(){
     tasksContainer.appendChild(wrapper);
   });
 }
-function openTasksListModal(){ populateTaskGlobalNodeSelect(); renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); if(!taskGlobalTitle.value) taskGlobalTitle.focus(); }
+function openTasksListModal(){ populateTaskGlobalNodeSelect(); renderTaskGlobalObjectivesChecklist(); renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); if(!taskGlobalTitle.value) taskGlobalTitle.focus(); }
 function closeTasksListModal(){ tasksModal.style.display='none'; tasksModal.setAttribute('aria-hidden','true'); }
 function populateTaskGlobalNodeSelect(){
-  const options=[]; world.querySelectorAll('.node').forEach(n=>{ const id=n.dataset.id; const name=n.querySelector('.label')?.textContent?.trim() || id; options.push({id,name}); });
-  taskGlobalNodeSelect.innerHTML=''; options.forEach(({id,name})=>{ const opt=document.createElement('option'); opt.value=id; opt.textContent=name; taskGlobalNodeSelect.appendChild(opt); });
-  if(currentNode){ taskGlobalNodeSelect.value=currentNode.dataset.id; }
+  const options=[];
+  world.querySelectorAll('.node').forEach(n=>{ const id=n.dataset.id; const name=n.querySelector('.label')?.textContent?.trim() || id; options.push({id,name}); });
+  const previous=taskGlobalNodeSelect.value;
+  taskGlobalNodeSelect.innerHTML='';
+  options.forEach(({id,name})=>{ const opt=document.createElement('option'); opt.value=id; opt.textContent=name; taskGlobalNodeSelect.appendChild(opt); });
+  const fallback=currentNode?.dataset?.id || (options[0]?.id||'');
+  const target=options.some(o=>o.id===previous) ? previous : fallback;
+  if(target) taskGlobalNodeSelect.value=target;
 }
 function clearGlobalTaskForm(){
   taskGlobalTitle.value=''; taskGlobalDesc.value=''; taskGlobalStart.value=''; taskGlobalEnd.value='';
   if(currentNode) taskGlobalNodeSelect.value=currentNode.dataset.id;
   taskGlobalTitle.focus();
+  renderTaskGlobalObjectivesChecklist();
 }
 taskGlobalSave.addEventListener('click',()=>{
   const nodeId=taskGlobalNodeSelect.value;
@@ -933,10 +1069,13 @@ taskGlobalSave.addEventListener('click',()=>{
   const t=taskGlobalTitle.value.trim(); if(!t){ alert('Veuillez saisir un titre.'); return; }
   const s=taskGlobalStart.value||'', e=taskGlobalEnd.value||'';
   if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
-  const ok=addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e); if(!ok) return;
-  renderGlobalTasksList(); clearGlobalTaskForm();
+  const selectedObjectiveIds=getCheckedObjectiveIds(taskGlobalObjectivesChecklist);
+  const ok=addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e, selectedObjectiveIds); if(!ok) return;
+  renderGlobalTasksList(); if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
+  clearGlobalTaskForm();
 });
 taskGlobalReset.addEventListener('click', clearGlobalTaskForm);
+taskGlobalNodeSelect.addEventListener('change',()=>renderTaskGlobalObjectivesChecklist());
 
 /* ====== Objectif Editor ====== */
 function openObjectiveEditor(forNode, objectiveIdToEdit=null){
@@ -1034,8 +1173,8 @@ function renderObjectiveEditor(){
           linked.forEach(t=> t.done=true);
         }
         saveState();
-        renderNodeTasksList();
-        renderGlobalTasksList();
+        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectivesChecklist(); }
+        if(isModalOpen(tasksModal)) renderGlobalTasksList();
       }else{
         updateObjectiveOnNode(node, o.id, { completed: !o.completed });
       }
@@ -1045,6 +1184,124 @@ function renderObjectiveEditor(){
     objectivesList.appendChild(wrap);
   });
 }
+
+function populateObjectiveGlobalNodeSelect(){
+  if(!objectiveGlobalNodeSelect) return;
+  const options=[];
+  world.querySelectorAll('.node').forEach(n=>{
+    const id=n.dataset.id;
+    const name=n.querySelector('.label')?.textContent?.trim() || id;
+    options.push({id,name});
+  });
+  const previous=objectiveGlobalNodeSelect.value;
+  objectiveGlobalNodeSelect.innerHTML='';
+  options.forEach(({id,name})=>{
+    const opt=document.createElement('option');
+    opt.value=id; opt.textContent=name; objectiveGlobalNodeSelect.appendChild(opt);
+  });
+  const fallback=currentNode?.dataset?.id || (options[0]?.id||'');
+  const target=options.some(o=>o.id===previous) ? previous : fallback;
+  if(target) objectiveGlobalNodeSelect.value=target;
+}
+function getObjectiveModalNode(){
+  const nodeId=objectiveGlobalNodeSelect?.value;
+  if(!nodeId) return null;
+  return world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`);
+}
+function renderGlobalObjectivesList(){
+  if(!objectivesContainer) return;
+  const node=getObjectiveModalNode();
+  objectivesContainer.innerHTML='';
+  if(!node){
+    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Sélectionnez un cercle pour afficher ses objectifs.';
+    objectivesContainer.appendChild(empty); return;
+  }
+  ensureObjArrays(node);
+  if(node._objectives.length===0){
+    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucun objectif pour ce cercle.';
+    objectivesContainer.appendChild(empty); return;
+  }
+  const nodeName=node.querySelector('.label')?.textContent?.trim() || node.dataset.id;
+  node._objectives.forEach(o=>{
+    const {done,total,ratio}=computeProgress(node,o);
+    const status = o.completed ? `✅ Terminé${o.completedAt?` le ${o.completedAt}`:''}` : (total>0 ? `${done}/${total} terminé(s)` : (o.completed?'✅ Terminé':'⏳ En cours'));
+    const taskNames=(o.taskIds||[]).map(id=>{
+      const t=(node._tasks||[]).find(task=>task.id===id);
+      return t ? t.title||'Tâche' : null;
+    }).filter(Boolean).map(escapeHtml);
+    const tasksInfo = taskNames.length ? `<div><small>Tâches liées : ${taskNames.join(', ')}</small></div>` : '<div><small>Aucune tâche liée</small></div>';
+    const wrap=document.createElement('div'); wrap.className='task-item';
+    wrap.innerHTML=`
+      <div style="display:flex; gap:10px; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1; min-width:200px;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <strong>🎯 ${escapeHtml(o.title||'Objectif')}</strong>
+            ${o.due?`<small>(échéance: ${escapeHtml(o.due)})</small>`:''}
+            <small style="opacity:.7">[${escapeHtml(nodeName)}]</small>
+          </div>
+          ${o.desc?`<div style="margin-top:6px">${escapeHtml(o.desc)}</div>`:''}
+          <div class="progress" style="margin-top:8px"><div style="width:${Math.round((o.completed?1:ratio)*100)}%"></div></div>
+          <div><small>${escapeHtml(status)}</small></div>
+          ${tasksInfo}
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <button class="icon-btn small btn-go" title="Centrer sur le cercle">📍</button>
+          <button class="icon-btn small btn-toggle" title="${o.completed?'Marquer en cours':'Marquer terminé'}">${o.completed?'↩️':'✅'}</button>
+          <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
+          <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
+        </div>
+      </div>
+    `;
+    wrap.querySelector('.btn-go').addEventListener('click',()=>{
+      closeObjectivesModal();
+      setCurrentNode(node,{preserveMenu2:true});
+      centerOnNode(node);
+    });
+    wrap.querySelector('.btn-edit').addEventListener('click',()=>{
+      openObjectiveEditor(node, o.id);
+    });
+    wrap.querySelector('.btn-del').addEventListener('click',()=>{
+      if(confirm('Supprimer cet objectif ?')) deleteObjectiveFromNode(node, o.id);
+    });
+    wrap.querySelector('.btn-toggle').addEventListener('click',()=>{
+      if((o.taskIds||[]).length>0){
+        const tasks=node._tasks||[];
+        const linked=o.taskIds.map(id=>tasks.find(t=>t.id===id)).filter(Boolean);
+        const allDone=linked.length>0 && linked.every(t=>t.done);
+        if(allDone){ linked.forEach(t=> t.done=false); }
+        else{ linked.forEach(t=> t.done=true); }
+        saveState();
+        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectivesChecklist(); }
+        if(isModalOpen(tasksModal)) renderGlobalTasksList();
+      }else{
+        updateObjectiveOnNode(node, o.id, { completed: !o.completed });
+      }
+      recomputeAllObjectives(node);
+      renderGlobalObjectivesList();
+      if(isModalOpen(objectiveEditor) && objectiveEditorNode===node) renderObjectiveEditor();
+    });
+    objectivesContainer.appendChild(wrap);
+  });
+}
+function openObjectivesModal(){
+  populateObjectiveGlobalNodeSelect();
+  renderGlobalObjectivesList();
+  objectivesModal.style.display='flex';
+  objectivesModal.setAttribute('aria-hidden','false');
+}
+function closeObjectivesModal(){
+  objectivesModal.style.display='none';
+  objectivesModal.setAttribute('aria-hidden','true');
+}
+objectivesBtn?.addEventListener('click',openObjectivesModal);
+objectivesClose?.addEventListener('click',closeObjectivesModal);
+objectivesModal?.addEventListener('click',(e)=>{ if(e.target===objectivesModal) closeObjectivesModal(); });
+objectiveGlobalNodeSelect?.addEventListener('change',renderGlobalObjectivesList);
+objectiveGlobalAdd?.addEventListener('click',()=>{
+  const node=getObjectiveModalNode();
+  if(!node){ alert('Veuillez choisir un cercle.'); return; }
+  openObjectiveEditor(node);
+});
 
 objSave.addEventListener('click',()=>{
   if(!objectiveEditorNode) return closeObjectiveEditor();
@@ -1125,7 +1382,6 @@ italicBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePr
 underlineBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtn); currentNode.querySelector('.label').style.textDecoration=on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
 
 iconWireBtn.addEventListener('click',()=>{ if(!currentNode) return; startWiring(currentNode); closeMenu(menu); });
-iconCenterBtn.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menu); });
 iconDeleteBtn.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menu); });
 iconTaskBtn.addEventListener('click',()=>{ if(!currentNode) return; openTaskEditor(currentNode); closeMenu(menu); });
 iconObjectiveBtn.addEventListener('click',()=>{ if(!currentNode) return; openObjectiveEditor(currentNode); closeMenu(menu); });
@@ -1146,7 +1402,6 @@ boldBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePre
 italicBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtnH); currentNode.querySelector('.label').style.fontStyle=on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
 underlineBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtnH); currentNode.querySelector('.label').style.textDecoration=on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
 iconColorBtnH.addEventListener('click',()=>{ colorPickerH.focus(); colorPickerH.click(); });
-iconCenterBtnH.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menuHeart); });
 iconDeleteBtnH.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menuHeart); });
 
 /* Sidebar */
@@ -1179,6 +1434,15 @@ function refreshSidebar(){
     btn.addEventListener('click',()=>{ setCurrentNode(n,{fromMenu1:true}); if(ul.style.display==='none'){ populateChildren(n.dataset.id,ul); ul.style.display='block'; } else { ul.style.display='none'; } });
     wrap.appendChild(btn); wrap.appendChild(ul); principalList.appendChild(wrap);
   });
+  if(isModalOpen(tasksModal)){
+    const selected=getCheckedObjectiveIds(taskGlobalObjectivesChecklist);
+    populateTaskGlobalNodeSelect();
+    renderTaskGlobalObjectivesChecklist(selected);
+  }
+  if(isModalOpen(objectivesModal)){
+    populateObjectiveGlobalNodeSelect();
+    renderGlobalObjectivesList();
+  }
 }
 
 /* Panel 2 */
@@ -1407,7 +1671,7 @@ function buildState(){
     textDecoration:n.querySelector('.label')?.style.textDecoration||'',
     maxFont: n.dataset.maxFont ? parseFloat(n.dataset.maxFont) : null,
     url: n.dataset.url || '',
-    tasks: (n._tasks||[]).map(t=>({id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done})),
+    tasks: (n._tasks||[]).map(t=>({id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done, objectiveIds:[...(t.objectiveIds||[])]})),
     objectives: (n._objectives||[]).map(o=>({id:o.id, title:o.title, desc:o.desc, due:o.due||'', taskIds:[...(o.taskIds||[])], completed:!!o.completed, completedAt:o.completedAt||null}))
   }));
   const edges=Array.from(qLines()).map(l=>({from:l.dataset.from,to:l.dataset.to}));
@@ -1435,8 +1699,9 @@ function restoreState(data){
     node.innerHTML='<span class="label"></span>'; const labelEl=node.querySelector('.label');
     labelEl.textContent=n.text||''; if(n.fontFamily) labelEl.style.fontFamily=n.fontFamily; if(n.fontWeight) labelEl.style.fontWeight=n.fontWeight; if(n.fontStyle) labelEl.style.fontStyle=n.fontStyle; if(n.textDecoration) labelEl.style.textDecoration=n.textDecoration; if(n.maxFont) node.dataset.maxFont=String(n.maxFont);
     if(n.url){ node.dataset.url=n.url; }
-    node._tasks=Array.isArray(n.tasks) ? n.tasks.map(t=>({ id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done })) : [];
+    node._tasks=Array.isArray(n.tasks) ? n.tasks.map(t=>({ id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done, objectiveIds: Array.isArray(t.objectiveIds) ? [...t.objectiveIds] : [] })) : [];
     node._objectives=Array.isArray(n.objectives) ? n.objectives.map(o=>({ id:o.id, title:o.title, desc:o.desc, due:o.due||'', taskIds:[...(o.taskIds||[])], completed: !!o.completed, completedAt: o.completedAt||null })) : [];
+    syncAllTaskObjectiveLinks(node);
     fitLabelToNode(node); updateUrlBadge(node); updateTaskBadge(node); updateObjectiveBadge(node); byId[n.id]=node;
   });
   if(!byId['node-0']){ mainNode.dataset.id='node-0'; mainNode.querySelector('.label').textContent='Cercle principal'; byId['node-0']=mainNode; }
