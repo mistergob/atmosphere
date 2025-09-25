@@ -306,13 +306,27 @@
     @keyframes pulseNode{0%{box-shadow:0 0 0 0 rgba(0,234,255,.35)}100%{box-shadow:0 0 0 6px rgba(0,234,255,0)}}
     .node.pulse{animation:pulseNode 600ms ease-out 2}
 
-    @media (prefers-reduced-motion: reduce){
-      *{ animation:none!important; transition:none!important }
-
-    #tasksModal{
-  /* pourquoi: n'affecte pas l'éditeur de tâche par cercle */
-  background: rgba(3, 6, 16, 0.95);
+    /* garde ce media pour couper les animations uniquement */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
 }
+
+/* règle qui s'applique tout le temps (hors media) */
+/* pourquoi: forcer un overlay plus opaque pour la modale des tâches uniquement */
+#tasksModal{
+  background: rgba(3, 6, 16, 0.95);
+  /* si une autre règle l’écrase plus loin, ajoute !important en dernier recours */
+  /* background: rgba(3, 6, 16, 0.95) !important; */
+}
+
+/* (optionnel) pourquoi: rendre la carte elle-même plus lisible */
+#tasksModal .card{
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+  /* ou quasi plein:
+  background: rgba(8,12,28,.92);
+  */
+}
+
     }
   </style>
 </head>
