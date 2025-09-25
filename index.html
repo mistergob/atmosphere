@@ -11,8 +11,8 @@
   <style>
     :root{
       /* Palette ATMOS */
-      --primary:#00eaff;          /* cyan néon */
-      --accent:#8a2be2;           /* violet néon */
+      --primary:#00eaff;          
+      --accent:#8a2be2;           
       --text:#e6f7ff;
       --muted:#9fb3c8;
 
@@ -43,7 +43,6 @@
         linear-gradient(120deg, var(--bg-a), var(--bg-b) 40%, var(--bg-c));
     }
 
-    /* Couche étoiles + image (décor) */
     body::before{
       content:"";
       position:fixed; inset:0; pointer-events:none; mix-blend-mode:screen; opacity:.15;
@@ -57,7 +56,6 @@
     }
     @keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.22}}
 
-    /* Halo nébuleux animé */
     body::after{
       content:"";
       position:fixed; inset:-10%; pointer-events:none; z-index:0; filter:blur(24px);
@@ -68,13 +66,11 @@
     }
     @keyframes float{from{transform:translateY(-1.5%)}to{transform:translateY(1.5%)}}
 
-    /* Zone schéma */
     .stage{position:relative;width:calc(100vw - var(--sidebar-w));height:100vh;margin-left:var(--sidebar-w);display:grid;place-items:center; z-index:1}
     .stage.panning, .stage.panning *{cursor:grabbing !important}
 
     #world{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
 
-    /* Fils */
     #wires{position:absolute;inset:0;width:100%;height:100%}
     #wires line{
       cursor:pointer; transition:stroke .12s ease, stroke-width .12s ease, filter .12s ease;
@@ -83,7 +79,6 @@
     }
     #wires line:hover{ stroke:#ff5ea0; stroke-width:3; filter: drop-shadow(0 0 10px rgba(255,94,160,.6)); }
 
-    /* Cercles / nœuds */
     .node{
       position:absolute;width:110px;height:110px;border-radius:9999px;
       background: var(--node, var(--primary)); color:#fff;
@@ -108,7 +103,6 @@
         0 0 0 4px color-mix(in oklab, var(--node, var(--primary)), white 35%),
         0 0 60px color-mix(in oklab, var(--node, var(--primary)), white 25%);
     }
-    /* Cibles d'accroche / câblage (patch) */
     .node.snap-target{
       box-shadow: 0 0 0 5px rgba(138,43,226,.45), 0 0 36px rgba(138,43,226,.45);
       filter: var(--glow);
@@ -126,7 +120,6 @@
       text-shadow: 0 0 8px rgba(0,0,0,.45);
     }
 
-    /* Badges */
     .url-badge{
       position:absolute; right:-6px; bottom:-6px; width:22px; height:22px; border-radius:9999px;
       border:1px solid rgba(255,255,255,.18); background:rgba(10,16,36,.8);
@@ -143,7 +136,6 @@
       box-shadow: 0 0 8px rgba(255,215,0,.4); color:#ffd700; display:flex; align-items:center; justify-content:center; font-size:12px; user-select:none;
     }
 
-    /* Menus (contextuels) */
     .menu{
       position:fixed;display:none;flex-direction:column;min-width:300px;
       background: rgba(6,10,24,.72);
@@ -187,7 +179,6 @@
     .icon-btn.small{width:28px;height:28px;font-size:14px;border-radius:8px}
     .icon-btn.star{color:#ffd700}
 
-    /* Toolbar */
     .toolbar{
       position:fixed;right:16px;top:16px;display:flex;gap:8px;
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
@@ -209,7 +200,6 @@
     .toolbar button.danger{ filter: drop-shadow(0 0 8px rgba(255,40,40,.35)); }
     .toolbar button.active{ box-shadow: var(--ring); }
 
-    /* Menus 1 & 2 (sidebars) */
     .sidebar{
       position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
@@ -231,7 +221,6 @@
       transition: background .15s ease, filter .15s ease;
     }
     .side-item:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
-    /* Patch: style danger manquant */
     .side-item.danger{ color:#ff9ca3 }
     .side-item.danger:hover{ background: linear-gradient(90deg, rgba(255,70,70,.08), rgba(255,90,90,.06)); filter: drop-shadow(0 0 8px rgba(255,70,70,.35)); }
 
@@ -243,7 +232,6 @@
     }
     .child-list li:hover{ background: rgba(255,255,255,.06); filter: var(--glow); }
 
-    /* Croix fermeture Menu 2 */
     #closeMenu2{
       position:sticky; top:0; float:right; width:26px; height:26px; border-radius:8px; cursor:pointer; font-weight:700; margin-left:auto;
       border:1px solid transparent; color:var(--text);
@@ -255,7 +243,6 @@
     }
     #closeMenu2:hover{ transform: translateY(-2px); filter: var(--glow); }
 
-    /* Rows, labels, inputs, toggles (Menu 2 style aligné Menu 3) */
     #actions .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}
     #actions .row:first-of-type{border-top:none}
     #actions .row label{font-size:12px;color:var(--muted);min-width:90px}
@@ -267,7 +254,6 @@
     #actions .toggle{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:transparent;color:var(--text)}
     #actions .toggle[aria-pressed="true"]{ background:#0b1120; box-shadow: var(--ring); }
 
-    /* Boutons bas-droite */
     .home-btn{
       position:fixed;bottom:16px;width:44px;height:44px;border-radius:9999px;cursor:pointer;font-size:20px;z-index:65;color:var(--text);
       border:1px solid transparent;
@@ -281,7 +267,6 @@
     #homeBtn{right:16px}
     #tasksBtn{right:70px}
 
-    /* Modales */
     .modal{position:fixed;inset:0;background:rgba(3,6,16,.55);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter: blur(2px)}
     .modal .card{
       width:min(520px,calc(100vw - 32px));max-height:80vh;overflow:auto;
@@ -318,11 +303,9 @@
       display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle
     }
 
-    /* Pulse sélection */
     @keyframes pulseNode{0%{box-shadow:0 0 0 0 rgba(0,234,255,.35)}100%{box-shadow:0 0 0 6px rgba(0,234,255,0)}}
     .node.pulse{animation:pulseNode 600ms ease-out 2}
 
-    /* Accessibilité */
     @media (prefers-reduced-motion: reduce){
       *{ animation:none!important; transition:none!important }
     }
@@ -508,6 +491,20 @@
   <!-- Modal liste tâches (globale) -->
   <div id="tasksModal" class="modal" aria-hidden="true">
     <div class="card">
+      <h3>Ajouter une nouvelle tâche</h3>
+      <!-- Nouveau formulaire global d'ajout -->
+      <div class="row"><label>Cercle</label>
+        <select id="taskGlobalNodeSelect"></select>
+      </div>
+      <div class="row"><label>Titre</label><input id="taskGlobalTitle" type="text" placeholder="Titre de la tâche" /></div>
+      <div class="row"><label>Note</label><textarea id="taskGlobalDesc" rows="3" placeholder="Description ou notes"></textarea></div>
+      <div class="row"><label>Début</label><input id="taskGlobalStart" type="date" /></div>
+      <div class="row"><label>Fin</label><input id="taskGlobalEnd" type="date" /></div>
+      <div class="actions">
+        <button id="taskGlobalReset" class="btn secondary">Annuler</button>
+        <button id="taskGlobalSave" class="btn">Ajouter</button>
+      </div>
+
       <h3>Liste des tâches</h3>
       <div id="tasksContainer" class="list"></div>
       <div class="actions">
@@ -521,8 +518,8 @@
     const stage = document.getElementById('stage');
     const world = document.getElementById('world');
     const svg = document.getElementById('wires');
-    const menu = document.getElementById('menu');           // Menu 3
-    const menuHeart = document.getElementById('menuHeart'); // Menu 4
+    const menu = document.getElementById('menu');           
+    const menuHeart = document.getElementById('menuHeart'); 
     const mainNode = document.getElementById('main-node');
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
@@ -587,6 +584,15 @@
     const tasksModal = document.getElementById('tasksModal');
     const tasksContainer = document.getElementById('tasksContainer');
     const tasksClose = document.getElementById('tasksClose');
+
+    /* ⬇️ Nouveau : éléments du formulaire d'ajout global */
+    const taskGlobalNodeSelect = document.getElementById('taskGlobalNodeSelect');
+    const taskGlobalTitle = document.getElementById('taskGlobalTitle');
+    const taskGlobalDesc = document.getElementById('taskGlobalDesc');
+    const taskGlobalStart = document.getElementById('taskGlobalStart');
+    const taskGlobalEnd = document.getElementById('taskGlobalEnd');
+    const taskGlobalSave = document.getElementById('taskGlobalSave');
+    const taskGlobalReset = document.getElementById('taskGlobalReset');
 
     /* State */
     let currentNode = null;
@@ -938,6 +944,7 @@
       const s = taskStart.value || '';
       const e = taskEnd.value || '';
       if(!t){ alert('Veuillez saisir un titre.'); return; }
+      if(s && e && s > e){ alert('La date de début doit précéder la date de fin.'); return; } /* pourquoi: garder cohérence */
       if(editingTaskId){
         updateTaskOnNode(currentNode, editingTaskId, { title:t, desc:d, start:s, end:e });
         editingTaskId = null;
@@ -1020,10 +1027,61 @@
         tasksContainer.appendChild(wrapper);
       });
     }
-    function openTasksListModal(){ renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); }
+    function openTasksListModal(){
+      populateTaskGlobalNodeSelect();
+      renderGlobalTasksList();
+      tasksModal.style.display='flex';
+      tasksModal.setAttribute('aria-hidden','false');
+      if(!taskGlobalTitle.value) taskGlobalTitle.focus();
+    }
     function closeTasksListModal(){ tasksModal.style.display='none'; tasksModal.setAttribute('aria-hidden','true'); }
 
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+    /* ⬇️ Nouveau : helpers formulaire global */
+    function populateTaskGlobalNodeSelect(){
+      const options = [];
+      world.querySelectorAll('.node').forEach(n=>{
+        const id = n.dataset.id;
+        const name = n.querySelector('.label')?.textContent?.trim() || id;
+        options.push({ id, name });
+      });
+      taskGlobalNodeSelect.innerHTML = '';
+      options.forEach(({id,name})=>{
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = name;
+        taskGlobalNodeSelect.appendChild(opt);
+      });
+      if(currentNode){
+        taskGlobalNodeSelect.value = currentNode.dataset.id;
+      }
+    }
+    function clearGlobalTaskForm(){
+      taskGlobalTitle.value = '';
+      taskGlobalDesc.value = '';
+      taskGlobalStart.value = '';
+      taskGlobalEnd.value = '';
+      if(currentNode){
+        taskGlobalNodeSelect.value = currentNode.dataset.id;
+      }
+      taskGlobalTitle.focus();
+    }
+    taskGlobalSave.addEventListener('click', ()=>{
+      const nodeId = taskGlobalNodeSelect.value;
+      const node = world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`);
+      if(!node){ alert('Veuillez choisir un cercle.'); return; }
+      const t = taskGlobalTitle.value.trim();
+      if(!t){ alert('Veuillez saisir un titre.'); return; }
+      const s = taskGlobalStart.value || '';
+      const e = taskGlobalEnd.value || '';
+      if(s && e && s > e){ alert('La date de début doit précéder la date de fin.'); return; } /* pourquoi: cohérence */
+      const ok = addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e);
+      if(!ok) return; /* pourquoi: limite par cercle */
+      renderGlobalTasksList();
+      clearGlobalTaskForm();
+    });
+    taskGlobalReset.addEventListener('click', clearGlobalTaskForm);
 
     function enableDrag(node){
       if(node._dragEnabled) return;
@@ -1306,7 +1364,7 @@
         }
         if(e.button===0 && !wiring.active && !e.target.closest('.node') && !menu.contains(e.target) && !menuHeart.contains(e.target) && !actionsPanel.contains(e.target) && !document.getElementById('sidebar').contains(e.target)){
           if(menu2Locked){
-            // on garde le panneau ouvert
+            // keep panel
           }else{
             world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
             currentNode=null; enableActionPanel(false); showActionsPanel(false);
