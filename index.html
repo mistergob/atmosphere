@@ -227,8 +227,37 @@
   .btn:hover{ transform: translateY(-2px); filter: var(--glow); }
   .btn.secondary{opacity:.9}
 
-  .list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-  .task-item{ border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);color:var(--text) }
+  .list{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .task-item{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:12px 14px;
+    background:linear-gradient(135deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    box-shadow:0 6px 16px rgba(0,0,0,.28);
+    color:var(--text);
+    transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+  .task-item:hover{ border-color:rgba(0,234,255,.35); box-shadow:0 10px 24px rgba(0,0,0,.32); transform:translateY(-1px); }
+  .task-item.is-complete{ border-color:rgba(0,234,255,.18); background:linear-gradient(135deg, rgba(0,234,255,.08), rgba(255,255,255,.02)); }
+  .task-item.is-open{border-color:rgba(0,234,255,.35); box-shadow:0 12px 28px rgba(0,0,0,.35);}
+  .task-item-content{display:flex;gap:12px;align-items:flex-start}
+  .task-main{flex:1;display:flex;flex-direction:column;gap:8px}
+  .task-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .task-checkbox{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:15px;font-weight:600;color:var(--text);flex:1}
+  .task-checkbox input{margin-top:3px}
+  .task-icon{font-size:16px;line-height:1;margin-top:1px}
+  .task-title{line-height:1.4}
+  .task-item.is-complete .task-title{color:var(--muted);text-decoration:line-through}
+  .task-meta{display:flex;flex-wrap:wrap;gap:6px;padding-left:32px}
+  .task-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;background:rgba(255,255,255,.08);color:var(--text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+  .task-badge-date{background:rgba(0,234,255,.12);color:rgba(0,234,255,.9)}
+  .task-badge-objective{background:rgba(138,43,226,.16);color:rgba(204,178,255,.95)}
+  .task-desc{padding-left:32px;font-size:13px;line-height:1.6;color:var(--muted)}
+  .task-actions{display:flex;gap:8px;align-items:flex-start}
+  .task-toggle{border:none;background:rgba(255,255,255,.06);color:var(--muted);border-radius:999px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s ease,transform .2s ease,color .2s ease}
+  .task-toggle::before{content:'▾';font-size:14px}
+  .task-toggle:hover{background:rgba(0,234,255,.18);color:rgba(0,234,255,.9)}
+  .task-item.is-open .task-toggle{transform:rotate(180deg);color:rgba(0,234,255,.9)}
   .task-item small{color:var(--muted)}
   .dot{ display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle }
   .progress{
@@ -958,25 +987,39 @@ function renderNodeTasksList(){
   }
   tasks.forEach(t=>{
     const div=document.createElement('div'); div.className='task-item';
+    if(t.done) div.classList.add('is-complete');
     const checked = t.done ? 'checked' : '';
-    const titleHtml = t.done ? `<del>⭐ ${escapeHtml(t.title)}</del>` : `⭐ ${escapeHtml(t.title)}`;
+    const safeTitle = t.title ? escapeHtml(t.title) : 'Sans titre';
     const objectiveNames = (t.objectiveIds||[]).map(id=>{
       const o=(node._objectives||[]).find(obj=>obj.id===id);
       return o ? o.title||'Objectif' : null;
     }).filter(Boolean).map(escapeHtml);
-    const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
+    const metaParts=[];
+    if(t.start || t.end){
+      metaParts.push(`<span class="task-badge task-badge-date">${escapeHtml(fmtRange(t.start,t.end))}</span>`);
+    }
+    if(objectiveNames.length){
+      objectiveNames.forEach(name=>metaParts.push(`<span class="task-badge task-badge-objective">${name}</span>`));
+    }
+    const metaHtml = metaParts.length ? `<div class="task-meta">${metaParts.join('')}</div>` : '';
+    const descContent = t.desc ? escapeHtml(t.desc).replace(/\n/g,'<br/>') : '';
+    const descHtml = t.desc ? `<div class="task-desc" hidden>${descContent}</div>` : '';
+    const toggleHtml = t.desc ? `<button class="task-toggle" type="button" aria-label="Afficher la description" aria-expanded="false"></button>` : '';
     div.innerHTML=`
-      <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
-        <div class="task-main" style="flex:1;">
-          <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
-            <input type="checkbox" class="task-done" ${checked}/>
-            <strong>${titleHtml}</strong>
-          </label>
-          ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
-          ${t.desc ? `<div style="margin-top:6px">${escapeHtml(t.desc)}</div>` : ''}
-          ${objectivesHtml}
+      <div class="task-item-content">
+        <div class="task-main">
+          <div class="task-header">
+            <label class="task-checkbox">
+              <input type="checkbox" class="task-done" ${checked}/>
+              <span class="task-icon" aria-hidden="true">⭐</span>
+              <span class="task-title">${safeTitle}</span>
+            </label>
+            ${toggleHtml}
+          </div>
+          ${metaHtml}
+          ${descHtml}
         </div>
-        <div style="display:flex; gap:6px;">
+        <div class="task-actions">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
           <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
         </div>
@@ -991,6 +1034,28 @@ function renderNodeTasksList(){
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
       if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
+    const descEl=div.querySelector('.task-desc');
+    if(descEl){
+      div.classList.add('has-desc');
+      const main=div.querySelector('.task-main');
+      const toggleBtn=div.querySelector('.task-toggle');
+      const toggleDesc=(event)=>{
+        if(event && (event.target.closest('.task-done')||event.target.closest('.task-checkbox')||event.target.closest('.btn-edit')||event.target.closest('.btn-del'))) return;
+        descEl.hidden=!descEl.hidden;
+        const open=!descEl.hidden;
+        div.classList.toggle('is-open', open);
+        if(toggleBtn){ toggleBtn.setAttribute('aria-expanded', String(open)); }
+      };
+      if(main){
+        main.addEventListener('click',(event)=>{
+          if(event.target.closest('.task-toggle')) return;
+          toggleDesc(event);
+        });
+      }
+      if(toggleBtn){
+        toggleBtn.addEventListener('click',(event)=>{ event.stopPropagation(); toggleDesc(); });
+      }
+    }
     nodeTasksList.appendChild(div);
   });
 }
