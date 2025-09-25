@@ -364,7 +364,7 @@
       <div class="row"><label>Note</label><textarea id="taskDesc" rows="4" placeholder="Description ou notes"></textarea></div>
       <div class="row"><label>Début</label><input id="taskStart" type="date"/></div>
       <div class="row"><label>Fin</label><input id="taskEnd" type="date"/></div>
-      <div class="row" style="align-items:flex-start"><label>Objectifs</label><div id="taskObjectivesChecklist" style="flex:1;display:grid;gap:6px;"></div></div>
+      <div class="row"><label for="taskObjectiveSelect">Objectif</label><select id="taskObjectiveSelect" style="flex:1"><option value="">Aucun objectif</option></select></div>
 
       <h3>Tâches du cercle</h3>
       <div id="nodeTasksList" class="list"></div>
@@ -385,7 +385,7 @@
       <div class="row"><label>Note</label><textarea id="taskGlobalDesc" rows="3" placeholder="Description ou notes"></textarea></div>
       <div class="row"><label>Début</label><input id="taskGlobalStart" type="date"/></div>
       <div class="row"><label>Fin</label><input id="taskGlobalEnd" type="date"/></div>
-      <div class="row" style="align-items:flex-start"><label>Objectifs</label><div id="taskGlobalObjectivesChecklist" style="flex:1; display:grid; gap:6px;"></div></div>
+      <div class="row"><label for="taskGlobalObjectiveSelect">Objectif</label><select id="taskGlobalObjectiveSelect" style="flex:1"><option value="">Aucun objectif</option></select></div>
       <div class="actions">
         <button id="taskGlobalReset" class="btn secondary">Annuler</button>
         <button id="taskGlobalSave" class="btn">Ajouter</button>
@@ -500,7 +500,7 @@ const taskTitle=document.getElementById('taskTitle');
 const taskDesc=document.getElementById('taskDesc');
 const taskStart=document.getElementById('taskStart');
 const taskEnd=document.getElementById('taskEnd');
-const taskObjectivesChecklist=document.getElementById('taskObjectivesChecklist');
+const taskObjectiveSelect=document.getElementById('taskObjectiveSelect');
 const taskSave=document.getElementById('taskSave');
 const taskCancel=document.getElementById('taskCancel');
 const nodeTasksList=document.getElementById('nodeTasksList');
@@ -514,7 +514,7 @@ const taskGlobalTitle=document.getElementById('taskGlobalTitle');
 const taskGlobalDesc=document.getElementById('taskGlobalDesc');
 const taskGlobalStart=document.getElementById('taskGlobalStart');
 const taskGlobalEnd=document.getElementById('taskGlobalEnd');
-const taskGlobalObjectivesChecklist=document.getElementById('taskGlobalObjectivesChecklist');
+const taskGlobalObjectiveSelect=document.getElementById('taskGlobalObjectiveSelect');
 const taskGlobalSave=document.getElementById('taskGlobalSave');
 const taskGlobalReset=document.getElementById('taskGlobalReset');
 
@@ -790,8 +790,8 @@ function addObjectiveToNode(node, {title, desc, due, taskIds}){
   node._objectives.push(objective);
   applyObjectiveTaskLinks(node, id, objective.taskIds);
   recomputeAllObjectives(node);
-  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
-  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectiveSelect();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectiveSelect(getSelectedObjectiveId(taskGlobalObjectiveSelect));
 }
 function updateObjectiveOnNode(node, objId, patch){
   ensureObjArrays(node);
@@ -804,8 +804,8 @@ function updateObjectiveOnNode(node, objId, patch){
   recomputeObjectiveCompletion(node, o);
   if(!prevCompleted && o.completed){ alert(`🎯 Objectif atteint : « ${o.title} »`); }
   updateObjectiveBadge(node); saveState();
-  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
-  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectiveSelect();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectiveSelect(getSelectedObjectiveId(taskGlobalObjectiveSelect));
 }
 function deleteObjectiveFromNode(node, objId){
   ensureObjArrays(node);
@@ -813,8 +813,8 @@ function deleteObjectiveFromNode(node, objId){
   (node._tasks||[]).forEach(t=>{ t.objectiveIds = (t.objectiveIds||[]).filter(id=>id!==objId); });
   updateObjectiveBadge(node); saveState();
   if(objectiveEditorNode===node && isModalOpen(objectiveEditor)) renderObjectiveEditor();
-  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectivesChecklist();
-  if(isModalOpen(tasksModal)) renderTaskGlobalObjectivesChecklist(getCheckedObjectiveIds(taskGlobalObjectivesChecklist));
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderTaskObjectiveSelect();
+  if(isModalOpen(tasksModal)) renderTaskGlobalObjectiveSelect(getSelectedObjectiveId(taskGlobalObjectiveSelect));
   if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
 }
 function recomputeObjectiveCompletion(node, objective){
@@ -886,42 +886,68 @@ function openTaskEditor(forNode, taskIdToEdit=null){
     const t=(forNode._tasks||[]).find(x=>x.id===taskIdToEdit);
     if(t){ editingTaskId=t.id; taskTitle.value=t.title||''; taskDesc.value=t.desc||''; taskStart.value=t.start||''; taskEnd.value=t.end||''; }
   }
-  renderTaskObjectivesChecklist();
+  renderTaskObjectiveSelect();
   renderNodeTasksList();
   taskEditor.style.display='flex'; taskEditor.setAttribute('aria-hidden','false');
   (taskTitle.value ? taskDesc : taskTitle).focus();
 }
 function closeTaskEditor(){ taskEditor.style.display='none'; taskEditor.setAttribute('aria-hidden','true'); taskEditorNode=null; editingTaskId=null; }
-function buildObjectiveChecklist(node, container, selectedIds, emptyMessage){
-  if(!container) return;
-  container.innerHTML='';
-  if(!node){ container.textContent=emptyMessage||'Sélectionnez un cercle.'; return; }
+function buildObjectiveSelect(node, selectEl, selectedId, placeholderWhenNoNode){
+  if(!selectEl) return;
+  selectEl.innerHTML='';
+  const placeholder=document.createElement('option');
+  placeholder.value='';
+  placeholder.textContent=placeholderWhenNoNode || '— Aucun objectif —';
+  selectEl.appendChild(placeholder);
+  selectEl.disabled=false;
+
+  if(!node){
+    placeholder.textContent=placeholderWhenNoNode || 'Sélectionnez un cercle.';
+    selectEl.value='';
+    selectEl.disabled=true;
+    return;
+  }
+
   ensureObjArrays(node);
   const objectives=node._objectives||[];
-  if(objectives.length===0){ container.textContent=emptyMessage||'Aucun objectif.'; return; }
-  const selected=new Set(selectedIds||[]);
+  if(objectives.length===0){
+    placeholder.textContent='Aucun objectif disponible.';
+    selectEl.value='';
+    selectEl.disabled=true;
+    return;
+  }
+
   objectives.forEach(obj=>{
-    const row=document.createElement('label');
-    row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.cursor='pointer';
-    const checked=selected.has(obj.id)?'checked':'';
-    row.innerHTML=`<input type="checkbox" value="${obj.id}" ${checked}/> ${escapeHtml(obj.title||'Objectif')}`;
-    container.appendChild(row);
+    const opt=document.createElement('option');
+    opt.value=obj.id;
+    opt.textContent=obj.title || 'Objectif';
+    selectEl.appendChild(opt);
   });
+
+  if(selectedId && objectives.some(o=>o.id===selectedId)){
+    selectEl.value=selectedId;
+  }else{
+    selectEl.value='';
+  }
 }
-function getCheckedObjectiveIds(container){
-  return Array.from(container?.querySelectorAll('input[type="checkbox"]')||[]).filter(cb=>cb.checked).map(cb=>cb.value);
+function getSelectedObjectiveId(selectEl){
+  if(!selectEl || selectEl.disabled) return '';
+  return selectEl.value || '';
 }
-function renderTaskObjectivesChecklist(){
-  if(!taskObjectivesChecklist) return;
-  if(!taskEditorNode){ taskObjectivesChecklist.textContent='Sélectionnez un cercle.'; return; }
-  const selected=editingTaskId ? (taskEditorNode._tasks.find(t=>t.id===editingTaskId)?.objectiveIds||[]) : [];
-  buildObjectiveChecklist(taskEditorNode, taskObjectivesChecklist, selected, 'Aucun objectif pour ce cercle.');
+function renderTaskObjectiveSelect(){
+  if(!taskObjectiveSelect) return;
+  if(!taskEditorNode){
+    buildObjectiveSelect(null, taskObjectiveSelect, '', 'Sélectionnez un cercle.');
+    return;
+  }
+  const selected=editingTaskId ? ((taskEditorNode._tasks.find(t=>t.id===editingTaskId)?.objectiveIds||[])[0]||'') : '';
+  buildObjectiveSelect(taskEditorNode, taskObjectiveSelect, selected, '— Aucun objectif —');
 }
-function renderTaskGlobalObjectivesChecklist(selectedIds=[]){
+function renderTaskGlobalObjectiveSelect(selectedId=''){
   const nodeId=taskGlobalNodeSelect?.value;
   const node=nodeId ? world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`) : null;
-  const clean=Array.isArray(selectedIds)?selectedIds:[];
-  buildObjectiveChecklist(node, taskGlobalObjectivesChecklist, clean, node ? 'Aucun objectif pour ce cercle.' : 'Sélectionnez un cercle.');
+  const preserved=selectedId || getSelectedObjectiveId(taskGlobalObjectiveSelect);
+  buildObjectiveSelect(node, taskGlobalObjectiveSelect, preserved, node ? '— Aucun objectif —' : 'Sélectionnez un cercle.');
 }
 function renderNodeTasksList(){
   const node=taskEditorNode; nodeTasksList.innerHTML='';
@@ -973,10 +999,11 @@ taskSave.addEventListener('click',()=>{
   const t=taskTitle.value.trim(), d=taskDesc.value.trim(), s=taskStart.value||'', e=taskEnd.value||'';
   if(!t){ alert('Veuillez saisir un titre.'); return; }
   if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
-  const selectedObjectiveIds=getCheckedObjectiveIds(taskObjectivesChecklist);
-  if(editingTaskId){ updateTaskOnNode(currentNode, editingTaskId, {title:t, desc:d, start:s, end:e, objectiveIds:selectedObjectiveIds}); editingTaskId=null; }
-  else{ const ok=addTaskToNode(currentNode, t, d, s, e, selectedObjectiveIds); if(!ok) return; }
-  renderNodeTasksList(); renderTaskObjectivesChecklist(); if(isModalOpen(tasksModal)) renderGlobalTasksList();
+  const selectedObjectiveId=getSelectedObjectiveId(taskObjectiveSelect);
+  const payload=selectedObjectiveId ? [selectedObjectiveId] : [];
+  if(editingTaskId){ updateTaskOnNode(currentNode, editingTaskId, {title:t, desc:d, start:s, end:e, objectiveIds:payload}); editingTaskId=null; }
+  else{ const ok=addTaskToNode(currentNode, t, d, s, e, payload); if(!ok) return; }
+  renderNodeTasksList(); renderTaskObjectiveSelect(); if(isModalOpen(tasksModal)) renderGlobalTasksList();
   if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
   taskTitle.value=''; taskDesc.value=''; taskStart.value=''; taskEnd.value=''; taskTitle.focus();
 });
@@ -1044,7 +1071,7 @@ function renderGlobalTasksList(){
     tasksContainer.appendChild(wrapper);
   });
 }
-function openTasksListModal(){ populateTaskGlobalNodeSelect(); renderTaskGlobalObjectivesChecklist(); renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); if(!taskGlobalTitle.value) taskGlobalTitle.focus(); }
+function openTasksListModal(){ populateTaskGlobalNodeSelect(); renderTaskGlobalObjectiveSelect(); renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); if(!taskGlobalTitle.value) taskGlobalTitle.focus(); }
 function closeTasksListModal(){ tasksModal.style.display='none'; tasksModal.setAttribute('aria-hidden','true'); }
 function populateTaskGlobalNodeSelect(){
   const options=[];
@@ -1060,7 +1087,7 @@ function clearGlobalTaskForm(){
   taskGlobalTitle.value=''; taskGlobalDesc.value=''; taskGlobalStart.value=''; taskGlobalEnd.value='';
   if(currentNode) taskGlobalNodeSelect.value=currentNode.dataset.id;
   taskGlobalTitle.focus();
-  renderTaskGlobalObjectivesChecklist();
+  renderTaskGlobalObjectiveSelect();
 }
 taskGlobalSave.addEventListener('click',()=>{
   const nodeId=taskGlobalNodeSelect.value;
@@ -1069,13 +1096,13 @@ taskGlobalSave.addEventListener('click',()=>{
   const t=taskGlobalTitle.value.trim(); if(!t){ alert('Veuillez saisir un titre.'); return; }
   const s=taskGlobalStart.value||'', e=taskGlobalEnd.value||'';
   if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
-  const selectedObjectiveIds=getCheckedObjectiveIds(taskGlobalObjectivesChecklist);
-  const ok=addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e, selectedObjectiveIds); if(!ok) return;
+  const selectedObjectiveId=getSelectedObjectiveId(taskGlobalObjectiveSelect);
+  const ok=addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e, selectedObjectiveId?[selectedObjectiveId]:[]); if(!ok) return;
   renderGlobalTasksList(); if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
   clearGlobalTaskForm();
 });
 taskGlobalReset.addEventListener('click', clearGlobalTaskForm);
-taskGlobalNodeSelect.addEventListener('change',()=>renderTaskGlobalObjectivesChecklist());
+taskGlobalNodeSelect.addEventListener('change',()=>renderTaskGlobalObjectiveSelect());
 
 /* ====== Objectif Editor ====== */
 function openObjectiveEditor(forNode, objectiveIdToEdit=null){
@@ -1173,7 +1200,7 @@ function renderObjectiveEditor(){
           linked.forEach(t=> t.done=true);
         }
         saveState();
-        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectivesChecklist(); }
+        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectiveSelect(); }
         if(isModalOpen(tasksModal)) renderGlobalTasksList();
       }else{
         updateObjectiveOnNode(node, o.id, { completed: !o.completed });
@@ -1271,7 +1298,7 @@ function renderGlobalObjectivesList(){
         if(allDone){ linked.forEach(t=> t.done=false); }
         else{ linked.forEach(t=> t.done=true); }
         saveState();
-        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectivesChecklist(); }
+        if(taskEditorNode===node && isModalOpen(taskEditor)){ renderNodeTasksList(); renderTaskObjectiveSelect(); }
         if(isModalOpen(tasksModal)) renderGlobalTasksList();
       }else{
         updateObjectiveOnNode(node, o.id, { completed: !o.completed });
@@ -1435,9 +1462,9 @@ function refreshSidebar(){
     wrap.appendChild(btn); wrap.appendChild(ul); principalList.appendChild(wrap);
   });
   if(isModalOpen(tasksModal)){
-    const selected=getCheckedObjectiveIds(taskGlobalObjectivesChecklist);
+    const selected=getSelectedObjectiveId(taskGlobalObjectiveSelect);
     populateTaskGlobalNodeSelect();
-    renderTaskGlobalObjectivesChecklist(selected);
+    renderTaskGlobalObjectiveSelect(selected);
   }
   if(isModalOpen(objectivesModal)){
     populateObjectiveGlobalNodeSelect();
