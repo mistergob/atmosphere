@@ -1,334 +1,251 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SPHAIRA</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPHAIRA + Objectifs</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#00eaff; --accent:#8a2be2; --text:#e6f7ff; --muted:#9fb3c8;
+    --space-img:url("https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?q=80&w=1920&auto=format&fit=crop");
+    --bg-a:#05060d; --bg-b:#0b1430; --bg-c:#00182a;
+    --glow: drop-shadow(0 0 8px rgba(0,234,255,.55)) drop-shadow(0 0 18px rgba(138,43,226,.35));
+    --ring: 0 0 0 3px rgba(0,234,255,.35), 0 0 24px rgba(0,234,255,.25);
+    --sidebar-w:260px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Outfit,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    color:var(--text); user-select:none; overflow:hidden;
+    background:
+      radial-gradient(1200px 800px at 75% 10%, rgba(138,43,226,.18), transparent 60%),
+      radial-gradient(900px 700px at 15% 85%, rgba(0,234,255,.12), transparent 55%),
+      radial-gradient(700px 500px at 80% 80%, rgba(0,40,80,.35), transparent 60%),
+      linear-gradient(120deg, var(--bg-a), var(--bg-b) 40%, var(--bg-c));
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; mix-blend-mode:screen; opacity:.15;
+    background:
+      var(--space-img) center/cover no-repeat,
+      radial-gradient(1px 1px at 10% 20%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 30% 80%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 70% 30%, #fff 40%, transparent 41%),
+      radial-gradient(1px 1px at 90% 60%, #fff 40%, transparent 41%);
+    animation: twinkle 14s linear infinite;
+  }
+  @keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.22}}
+  body::after{
+    content:""; position:fixed; inset:-10%; pointer-events:none; z-index:0; filter:blur(24px);
+    background:
+      radial-gradient(600px 320px at 50% 25%, rgba(0,234,255,.18), transparent 60%),
+      radial-gradient(900px 420px at 50% 70%, rgba(138,43,226,.18), transparent 65%);
+    animation: float 18s ease-in-out infinite alternate;
+  }
+  @keyframes float{from{transform:translateY(-1.5%)}to{transform:translateY(1.5%)}}
 
-  <!-- Polices futuristes -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+  .stage{position:relative;width:calc(100vw - var(--sidebar-w));height:100vh;margin-left:var(--sidebar-w);display:grid;place-items:center; z-index:1}
+  .stage.panning, .stage.panning *{cursor:grabbing!important}
+  #world{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
 
-  <style>
-    :root{
-      /* Palette ATMOS */
-      --primary:#00eaff;          
-      --accent:#8a2be2;           
-      --text:#e6f7ff;
-      --muted:#9fb3c8;
+  #wires{position:absolute;inset:0;width:100%;height:100%}
+  #wires line{
+    cursor:pointer; transition:stroke .12s ease, stroke-width .12s ease, filter .12s ease;
+    stroke: rgba(0,234,255,.55); stroke-width:2; stroke-linecap:round;
+    filter: drop-shadow(0 0 6px rgba(0,234,255,.35));
+  }
+  #wires line:hover{ stroke:#ff5ea0; stroke-width:3; filter: drop-shadow(0 0 10px rgba(255,94,160,.6)); }
 
-      /* Fond spatial */
-      --space-img:url("https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?q=80&w=1920&auto=format&fit=crop");
-      --bg-a:#05060d; --bg-b:#0b1430; --bg-c:#00182a;
+  .node{
+    position:absolute;width:110px;height:110px;border-radius:9999px;
+    background: var(--node, var(--primary)); color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;text-align:center;padding:10px;
+    cursor:grab; transition:transform .12s ease,box-shadow .12s ease,filter .12s ease; will-change:transform,left,top;
+    border:1px solid color-mix(in oklab, var(--node, var(--primary)), white 15%);
+    box-shadow:0 0 0 3px color-mix(in oklab, var(--node, var(--primary)), black 75%), 0 0 28px color-mix(in oklab, var(--node, var(--primary)), white 10%);
+  }
+  .node:active{cursor:grabbing}
+  .node:hover{ filter:var(--glow); box-shadow:0 0 0 3px color-mix(in oklab, var(--node, var(--primary)), black 65%), 0 0 42px color-mix(in oklab, var(--node, var(--primary)), white 20%); transform:translateY(-1px); }
+  .node.selected{ box-shadow: 0 0 0 4px color-mix(in oklab, var(--node, var(--primary)), white 35%), 0 0 60px color-mix(in oklab, var(--node, var(--primary)), white 25%); }
+  .node.snap-target{ box-shadow:0 0 0 5px rgba(138,43,226,.45), 0 0 36px rgba(138,43,226,.45); filter:var(--glow); }
+  .node.wire-source{ box-shadow:0 0 0 5px rgba(0,234,255,.5), 0 0 36px rgba(0,234,255,.4); }
+  .node.connectable{ outline:2px dashed rgba(234,255,255,.25); outline-offset:2px; }
+  .node .label{ pointer-events:none; line-height:1.1; width:100%; max-width:100%; overflow:hidden; word-break:break-word; hyphens:auto; text-shadow:0 0 8px rgba(0,0,0,.45); }
 
-      /* Effets */
-      --glow: drop-shadow(0 0 8px rgba(0,234,255,.55)) drop-shadow(0 0 18px rgba(138,43,226,.35));
-      --ring: 0 0 0 3px rgba(0,234,255,.35), 0 0 24px rgba(0,234,255,.25);
+  .url-badge{
+    position:absolute; right:-6px; bottom:-6px; width:22px; height:22px; border-radius:9999px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(10,16,36,.8);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 8px rgba(0,234,255,.35);
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:#eaffff; text-decoration:none;
+    transition: filter .15s ease, transform .15s ease;
+  }
+  .url-badge:hover{ filter: var(--glow); transform: translateY(-1px); }
 
-      /* Layout */
-      --sidebar-w:260px;
-    }
+  .task-badge{
+    position:absolute; right:-6px; top:-6px; width:22px; height:22px; border-radius:9999px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08);
+    box-shadow: 0 0 8px rgba(255,215,0,.4); color:#ffd700; display:flex; align-items:center; justify-content:center; font-size:12px; user-select:none;
+  }
+  .objective-badge{
+    position:absolute; left:-6px; top:-6px; width:22px; height:22px; border-radius:9999px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08);
+    box-shadow: 0 0 8px rgba(0,234,255,.4); color:#7ee3ff; display:flex; align-items:center; justify-content:center; font-size:12px; user-select:none;
+  }
 
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: Outfit, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      color:var(--text);
-      user-select:none;
-      overflow:hidden;
-      background:
-        radial-gradient(1200px 800px at 75% 10%, rgba(138,43,226,.18), transparent 60%),
-        radial-gradient(900px 700px at 15% 85%, rgba(0,234,255,.12), transparent 55%),
-        radial-gradient(700px 500px at 80% 80%, rgba(0,40,80,.35), transparent 60%),
-        linear-gradient(120deg, var(--bg-a), var(--bg-b) 40%, var(--bg-c));
-    }
+  .menu{ position:fixed;display:none;flex-direction:column;min-width:300px; background: rgba(6,10,24,.72);
+    border:1px solid rgba(255,255,255,.08); border-radius:14px; box-shadow:0 20px 40px rgba(0,0,0,.35); overflow:hidden; z-index:70; backdrop-filter: blur(10px); }
+  .menu-body{display:flex;flex-direction:column}
+  .menu button{ appearance:none;background:transparent;border:0;text-align:left;padding:12px 14px;font-size:14px;cursor:pointer;color:var(--text); border-radius:10px; margin:2px 6px; transition: background .15s ease, filter .15s ease; }
+  .menu button:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
+  .menu .row{ display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08) }
+  .menu .row label{font-size:12px;color:var(--muted)}
+  .menu .row input[type="color"]{ width:36px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0;background:transparent;cursor:pointer }
+  .menu select,.menu input[type="number"],.menu input[type="text"]{
+    height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)
+  }
+  .menu .toggle-group{display:flex;gap:8px}
+  .menu .toggle{ padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:transparent;color:var(--text) }
+  .menu .toggle[aria-pressed="true"]{ background:#0b1120; box-shadow: var(--ring); }
+  .menu-spacer{flex:1 1 auto}
+  .menu-footer{display:flex;gap:8px;justify-content:flex-end;padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
 
-    body::before{
-      content:"";
-      position:fixed; inset:0; pointer-events:none; mix-blend-mode:screen; opacity:.15;
-      background:
-        var(--space-img) center/cover no-repeat,
-        radial-gradient(1px 1px at 10% 20%, #fff 40%, transparent 41%),
-        radial-gradient(1px 1px at 30% 80%, #fff 40%, transparent 41%),
-        radial-gradient(1px 1px at 70% 30%, #fff 40%, transparent 41%),
-        radial-gradient(1px 1px at 90% 60%, #fff 40%, transparent 41%);
-      animation: twinkle 14s linear infinite;
-    }
-    @keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.22}}
+  .icon-btn{
+    width:36px;height:36px;border-radius:10px;border:1px solid transparent;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text);
+    background:
+      linear-gradient(#0c1327,#0b1120) padding-box,
+      conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .icon-btn:hover{ transform: translateY(-2px); filter: var(--glow); }
+  .icon-btn.small{width:28px;height:28px;font-size:14px;border-radius:8px}
+  .icon-btn.star{color:#ffd700}
 
-    body::after{
-      content:"";
-      position:fixed; inset:-10%; pointer-events:none; z-index:0; filter:blur(24px);
-      background:
-        radial-gradient(600px 320px at 50% 25%, rgba(0,234,255,.18), transparent 60%),
-        radial-gradient(900px 420px at 50% 70%, rgba(138,43,226,.18), transparent 65%);
-      animation: float 18s ease-in-out infinite alternate;
-    }
-    @keyframes float{from{transform:translateY(-1.5%)}to{transform:translateY(1.5%)}}
+  .toolbar{
+    position:fixed;right:16px;top:16px;display:flex;gap:8px;
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:14px;padding:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:65; backdrop-filter: blur(8px);
+  }
+  .toolbar button{
+    padding:10px 14px;border:1px solid transparent;border-radius:12px;cursor:pointer;color:var(--text);
+    background:
+      linear-gradient(#0c1327,#0b1120) padding-box,
+      conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    font-weight:600; letter-spacing:.02em;
+  }
+  .toolbar button:hover{ transform: translateY(-2px); filter: var(--glow); }
+  .toolbar button.secondary{ opacity:.9 }
+  .toolbar button.danger{ filter: drop-shadow(0 0 8px rgba(255,40,40,.35)); }
+  .toolbar button.active{ box-shadow: var(--ring); }
 
-    .stage{position:relative;width:calc(100vw - var(--sidebar-w));height:100vh;margin-left:var(--sidebar-w);display:grid;place-items:center; z-index:1}
-    .stage.panning, .stage.panning *{cursor:grabbing !important}
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border-right:1px solid rgba(255,255,255,.06);
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    padding:12px;overflow:auto;z-index:80; backdrop-filter: blur(8px);
+  }
+  .sidebar2{
+    position:fixed;left:var(--sidebar-w);top:0;bottom:0;width:260px;
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border-right:1px solid rgba(255,255,255,.06);
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    padding:12px;overflow:auto;z-index:80;display:none; backdrop-filter: blur(8px);
+  }
 
-    #world{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
+  .side-item{
+    width:100%;text-align:left;padding:12px 14px;border:0;border-radius:12px;background:transparent;color:var(--text);
+    font-weight:700;cursor:pointer;margin-bottom:8px; transition: background .15s ease, filter .15s ease;
+  }
+  .side-item:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
+  .side-item.danger{ color:#ff9ca3 }
+  .side-item.danger:hover{ background: linear-gradient(90deg, rgba(255,70,70,.08), rgba(255,90,90,.06)); filter: drop-shadow(0 0 8px rgba(255,70,70,.35)); }
 
-    #wires{position:absolute;inset:0;width:100%;height:100%}
-    #wires line{
-      cursor:pointer; transition:stroke .12s ease, stroke-width .12s ease, filter .12s ease;
-      stroke: rgba(0,234,255,.55); stroke-width:2; stroke-linecap:round;
-      filter: drop-shadow(0 0 6px rgba(0,234,255,.35));
-    }
-    #wires line:hover{ stroke:#ff5ea0; stroke-width:3; filter: drop-shadow(0 0 10px rgba(255,94,160,.6)); }
+  .child-list{list-style:none;padding-left:10px;margin:6px 0 12px}
+  .child-list li{
+    padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.03);margin-bottom:6px;font-size:13px;cursor:pointer;color:var(--text);
+    transition: background .15s ease, filter .15s ease;
+  }
+  .child-list li:hover{ background: rgba(255,255,255,.06); filter: var(--glow); }
 
-    .node{
-      position:absolute;width:110px;height:110px;border-radius:9999px;
-      background: var(--node, var(--primary)); color:#fff;
-      display:flex;align-items:center;justify-content:center;font-weight:700;text-align:center;padding:10px;
-      cursor:grab; transition:transform .12s ease,box-shadow .12s ease,filter .12s ease; will-change:transform,left,top;
-      border:1px solid color-mix(in oklab, var(--node, var(--primary)), white 15%);
-      box-shadow:
-        0 0 0 3px color-mix(in oklab, var(--node, var(--primary)), black 75%),
-        0 0 28px color-mix(in oklab, var(--node, var(--primary)), white 10%);
-    }
-    .node:active{cursor:grabbing}
-    .node:hover{
-      filter: var(--glow);
-      box-shadow:
-        0 0 0 3px color-mix(in oklab, var(--node, var(--primary)), black 65%),
-        0 0 42px color-mix(in oklab, var(--node, var(--primary)), white 20%);
-      transform: translateY(-1px);
-    }
-    .node.selected{
-      outline:unset;
-      box-shadow:
-        0 0 0 4px color-mix(in oklab, var(--node, var(--primary)), white 35%),
-        0 0 60px color-mix(in oklab, var(--node, var(--primary)), white 25%);
-    }
-    .node.snap-target{
-      box-shadow: 0 0 0 5px rgba(138,43,226,.45), 0 0 36px rgba(138,43,226,.45);
-      filter: var(--glow);
-    }
-    .node.wire-source{
-      box-shadow: 0 0 0 5px rgba(0,234,255,.5), 0 0 36px rgba(0,234,255,.4);
-    }
-    .node.connectable{
-      outline: 2px dashed rgba(234,255,255,.25);
-      outline-offset: 2px;
-    }
+  #closeMenu2{ position:sticky; top:0; float:right; width:26px; height:26px; border-radius:8px; cursor:pointer; font-weight:700; margin-left:auto;
+    border:1px solid transparent; color:var(--text);
+    background:linear-gradient(#0c1327,#0b1120) padding-box, conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.35);
+    transition: transform .2s ease, filter .2s ease;
+  }
+  #closeMenu2:hover{ transform: translateY(-2px); filter: var(--glow); }
 
-    .node .label{
-      pointer-events:none;line-height:1.1;width:100%;max-width:100%;overflow:hidden;word-break:break-word;hyphens:auto;
-      text-shadow: 0 0 8px rgba(0,0,0,.45);
-    }
+  #actions .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}
+  #actions .row:first-of-type{border-top:none}
+  #actions .row label{font-size:12px;color:var(--muted);min-width:90px}
+  #actions input[type="color"]{width:36px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0;background:transparent;cursor:pointer}
+  #actions select,#actions input[type="number"],#actions input[type="text"]{ height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)}
+  #actions .toggle-group{display:flex;gap:8px}
+  #actions .toggle{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:transparent;color:var(--text)}
+  #actions .toggle[aria-pressed="true"]{ background:#0b1120; box-shadow: var(--ring); }
 
-    .url-badge{
-      position:absolute; right:-6px; bottom:-6px; width:22px; height:22px; border-radius:9999px;
-      border:1px solid rgba(255,255,255,.18); background:rgba(10,16,36,.8);
-      backdrop-filter: blur(6px);
-      box-shadow: 0 0 8px rgba(0,234,255,.35);
-      display:flex; align-items:center; justify-content:center; font-size:12px; color:#eaffff; text-decoration:none;
-      transition: filter .15s ease, transform .15s ease;
-    }
-    .url-badge:hover{ filter: var(--glow); transform: translateY(-1px); }
+  .home-btn{
+    position:fixed;bottom:16px;width:44px;height:44px;border-radius:9999px;cursor:pointer;font-size:20px;z-index:65;color:var(--text);
+    border:1px solid transparent;
+    background:linear-gradient(#0c1327,#0b1120) padding-box, conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
+    transition: transform .2s ease, filter .2s ease;
+  }
+  .home-btn:hover{ transform: translateY(-2px); filter: var(--glow); }
+  #homeBtn{right:16px} #tasksBtn{right:70px}
 
-    .task-badge{
-      position:absolute; right:-6px; top:-6px; width:22px; height:22px; border-radius:9999px;
-      border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08);
-      box-shadow: 0 0 8px rgba(255,215,0,.4); color:#ffd700; display:flex; align-items:center; justify-content:center; font-size:12px; user-select:none;
-    }
+  .modal{position:fixed;inset:0;background:rgba(3,6,16,.55);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter: blur(2px)}
+  .modal .card{
+    width:min(620px,calc(100vw - 32px));max-height:80vh;overflow:auto;
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.06); border-radius:16px;
+    box-shadow:0 20px 40px rgba(0,0,0,.35); padding:14px; color:var(--text);
+    backdrop-filter: blur(8px);
+  }
+  .modal .card h3{margin:4px 0 10px 0; font-family: Orbitron, sans-serif; letter-spacing:.06em}
+  .modal .row{display:flex;gap:10px;margin:8px 0}
+  .modal label{font-size:12px;color:var(--muted);min-width:90px}
+  .modal input,.modal textarea, .modal select{
+    flex:1;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font:inherit;background:rgba(8,12,28,.6);color:var(--text)
+  }
+  .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .btn{
+    padding:10px 14px;border-radius:12px;border:1px solid transparent;cursor:pointer;color:var(--text);
+    background:linear-gradient(#0c1327,#0b1120) padding-box, conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
+    transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  }
+  .btn:hover{ transform: translateY(-2px); filter: var(--glow); }
+  .btn.secondary{opacity:.9}
 
-    .menu{
-      position:fixed;display:none;flex-direction:column;min-width:300px;
-      background: rgba(6,10,24,.72);
-      border:1px solid rgba(255,255,255,.08); border-radius:14px;
-      box-shadow:0 20px 40px rgba(0,0,0,.35); overflow:hidden; z-index:70; backdrop-filter: blur(10px);
-    }
-    .menu-body{display:flex;flex-direction:column}
-    .menu button{
-      appearance:none;background:transparent;border:0;text-align:left;padding:12px 14px;font-size:14px;cursor:pointer;color:var(--text);
-      border-radius:10px; margin:2px 6px; transition: background .15s ease, filter .15s ease;
-    }
-    .menu button:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
-    .menu .row{
-      display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)
-    }
-    .menu .row label{font-size:12px;color:var(--muted)}
-    .menu .row input[type="color"]{
-      width:36px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0;background:transparent;cursor:pointer
-    }
-    .menu select,.menu input[type="number"],.menu input[type="text"]{
-      height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)
-    }
-    .menu .toggle-group{display:flex;gap:8px}
-    .menu .toggle{
-      padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:transparent;color:var(--text)
-    }
-    .menu .toggle[aria-pressed="true"]{ background:#0b1120; box-shadow: var(--ring); }
-    .menu-spacer{flex:1 1 auto}
-    .menu-footer{display:flex;gap:8px;justify-content:flex-end;padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+  .list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .task-item{ border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);color:var(--text) }
+  .task-item small{color:var(--muted)}
+  .dot{ display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle }
+  .progress{
+    height:8px;border-radius:9999px; background:rgba(255,255,255,.12); overflow:hidden
+  }
+  .progress > div{ height:100%; width:0%; background:linear-gradient(90deg, rgba(0,234,255,.8), rgba(138,43,226,.8)); }
 
-    .icon-btn{
-      width:36px;height:36px;border-radius:10px;border:1px solid transparent;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text);
-      background:
-        linear-gradient(#0c1327,#0b1120) padding-box,
-        conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
-      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
-    }
-    .icon-btn:hover{ transform: translateY(-2px); filter: var(--glow); }
-    .icon-btn.small{width:28px;height:28px;font-size:14px;border-radius:8px}
-    .icon-btn.star{color:#ffd700}
+  @keyframes pulseNode{0%{box-shadow:0 0 0 0 rgba(0,234,255,.35)}100%{box-shadow:0 0 0 6px rgba(0,234,255,0)}}
+  .node.pulse{animation:pulseNode 600ms ease-out 2}
 
-    .toolbar{
-      position:fixed;right:16px;top:16px;display:flex;gap:8px;
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.06);
-      border-radius:14px;padding:8px;
-      box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:65; backdrop-filter: blur(8px);
-    }
-    .toolbar button{
-      padding:10px 14px;border:1px solid transparent;border-radius:12px;cursor:pointer;color:var(--text);
-      background:
-        linear-gradient(#0c1327,#0b1120) padding-box,
-        conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
-      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
-      font-weight:600; letter-spacing:.02em;
-    }
-    .toolbar button:hover{ transform: translateY(-2px); filter: var(--glow); }
-    .toolbar button.secondary{ opacity:.9 }
-    .toolbar button.danger{ filter: drop-shadow(0 0 8px rgba(255,40,40,.35)); }
-    .toolbar button.active{ box-shadow: var(--ring); }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none!important; transition:none!important }
+  }
 
-    .sidebar{
-      position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border-right:1px solid rgba(255,255,255,.06);
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
-      padding:12px;overflow:auto;z-index:80; backdrop-filter: blur(8px);
-    }
-    .sidebar2{
-      position:fixed;left:var(--sidebar-w);top:0;bottom:0;width:260px;
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border-right:1px solid rgba(255,255,255,.06);
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
-      padding:12px;overflow:auto;z-index:80;display:none; backdrop-filter: blur(8px);
-    }
-
-    .side-item{
-      width:100%;text-align:left;padding:12px 14px;border:0;border-radius:12px;background:transparent;color:var(--text);
-      font-weight:700;cursor:pointer;margin-bottom:8px;
-      transition: background .15s ease, filter .15s ease;
-    }
-    .side-item:hover{ background: linear-gradient(90deg, rgba(0,234,255,.08), rgba(138,43,226,.06)); filter: var(--glow); }
-    .side-item.danger{ color:#ff9ca3 }
-    .side-item.danger:hover{ background: linear-gradient(90deg, rgba(255,70,70,.08), rgba(255,90,90,.06)); filter: drop-shadow(0 0 8px rgba(255,70,70,.35)); }
-
-    .child-list{list-style:none;padding-left:10px;margin:6px 0 12px}
-    .child-list li{
-      padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.1);
-      background: rgba(255,255,255,.03);margin-bottom:6px;font-size:13px;cursor:pointer;color:var(--text);
-      transition: background .15s ease, filter .15s ease;
-    }
-    .child-list li:hover{ background: rgba(255,255,255,.06); filter: var(--glow); }
-
-    #closeMenu2{
-      position:sticky; top:0; float:right; width:26px; height:26px; border-radius:8px; cursor:pointer; font-weight:700; margin-left:auto;
-      border:1px solid transparent; color:var(--text);
-      background:
-        linear-gradient(#0c1327,#0b1120) padding-box,
-        conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.35);
-      transition: transform .2s ease, filter .2s ease;
-    }
-    #closeMenu2:hover{ transform: translateY(-2px); filter: var(--glow); }
-
-    #actions .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}
-    #actions .row:first-of-type{border-top:none}
-    #actions .row label{font-size:12px;color:var(--muted);min-width:90px}
-    #actions input[type="color"]{width:36px;height:28px;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:0;background:transparent;cursor:pointer}
-    #actions select,#actions input[type="number"],#actions input[type="text"]{
-      height:28px;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:0 8px;background:rgba(8,12,28,.6);color:var(--text)
-    }
-    #actions .toggle-group{display:flex;gap:8px}
-    #actions .toggle{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;cursor:pointer;background:transparent;color:var(--text)}
-    #actions .toggle[aria-pressed="true"]{ background:#0b1120; box-shadow: var(--ring); }
-
-    .home-btn{
-      position:fixed;bottom:16px;width:44px;height:44px;border-radius:9999px;cursor:pointer;font-size:20px;z-index:65;color:var(--text);
-      border:1px solid transparent;
-      background:
-        linear-gradient(#0c1327,#0b1120) padding-box,
-        conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
-      transition: transform .2s ease, filter .2s ease;
-    }
-    .home-btn:hover{ transform: translateY(-2px); filter: var(--glow); }
-    #homeBtn{right:16px}
-    #tasksBtn{right:70px}
-
-    .modal{position:fixed;inset:0;background:rgba(3,6,16,.55);display:none;align-items:center;justify-content:center;z-index:90;backdrop-filter: blur(2px)}
-    .modal .card{
-      width:min(520px,calc(100vw - 32px));max-height:80vh;overflow:auto;
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.06); border-radius:16px;
-      box-shadow:0 20px 40px rgba(0,0,0,.35); padding:14px; color:var(--text);
-      backdrop-filter: blur(8px);
-    }
-    .modal .card h3{margin:4px 0 10px 0; font-family: Orbitron, sans-serif; letter-spacing:.06em}
-    .modal .row{display:flex;gap:10px;margin:8px 0}
-    .modal label{font-size:12px;color:var(--muted);min-width:90px}
-    .modal input,.modal textarea{
-      flex:1;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;font:inherit;background:rgba(8,12,28,.6);color:var(--text)
-    }
-    .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
-
-    .btn{
-      padding:10px 14px;border-radius:12px;border:1px solid transparent;cursor:pointer;color:var(--text);
-      background:
-        linear-gradient(#0c1327,#0b1120) padding-box,
-        conic-gradient(from 180deg, rgba(0,234,255,.8), rgba(138,43,226,.8), rgba(0,234,255,.8)) border-box;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.45);
-      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
-    }
-    .btn:hover{ transform: translateY(-2px); filter: var(--glow); }
-    .btn.secondary{opacity:.9}
-
-    .list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-    .task-item{
-      border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);color:var(--text)
-    }
-    .task-item small{color:var(--muted)}
-    .dot{
-      display:inline-block;width:10px;height:10px;border-radius:9999px;border:1px solid rgba(255,255,255,.12);margin-right:6px;vertical-align:middle
-    }
-
-    @keyframes pulseNode{0%{box-shadow:0 0 0 0 rgba(0,234,255,.35)}100%{box-shadow:0 0 0 6px rgba(0,234,255,0)}}
-    .node.pulse{animation:pulseNode 600ms ease-out 2}
-
-    /* garde ce media pour couper les animations uniquement */
-@media (prefers-reduced-motion: reduce){
-  *{ animation: none !important; transition: none !important; }
-}
-
-/* règle qui s'applique tout le temps (hors media) */
-/* pourquoi: forcer un overlay plus opaque pour la modale des tâches uniquement */
-#tasksModal{
-  background: rgba(3, 6, 16, 0.95);
-  /* si une autre règle l’écrase plus loin, ajoute !important en dernier recours */
-  /* background: rgba(3, 6, 16, 0.95) !important; */
-}
-
-/* (optionnel) pourquoi: rendre la carte elle-même plus lisible */
-#tasksModal .card{
-  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
-  /* ou quasi plein:
-  background: rgba(8,12,28,.92);
-  */
-}
-
-    }
-  </style>
+  /* Opacité spécifique à la liste globale des tâches */
+  #tasksModal{ background: rgba(3, 6, 16, 0.90); }
+</style>
 </head>
 <body>
   <!-- Menu 1 -->
@@ -336,38 +253,20 @@
     <div id="principalList"></div>
   </aside>
 
-  <!-- Menu 2 (overlay, uniquement après sélection via Menu 1) -->
+  <!-- Menu 2 -->
   <aside id="actions" class="sidebar sidebar2" aria-label="Actions du cercle">
     <button id="closeMenu2" title="Fermer">×</button>
     <div id="selectedInfo" style="font-size:12px;color:var(--muted);margin:0 0 8px;">Aucun cercle sélectionné</div>
-    <div class="row" aria-label="Titre (panneau)">
-      <label for="titleInput2">Titre</label>
-      <input id="titleInput2" type="text" placeholder="Nom du cercle" style="flex:1" />
-    </div>
+    <div class="row"><label for="titleInput2">Titre</label><input id="titleInput2" type="text" placeholder="Nom du cercle" style="flex:1"/></div>
     <button id="actAddPrincipal" class="side-item" type="button">➕ Cercle principal</button>
     <button id="actAddSecondary" class="side-item" type="button">➕ Cercle secondaire</button>
     <button id="actWire" class="side-item" type="button">🔗 Connecter à…</button>
-    <div class="row" aria-label="Couleur (panneau)">
-      <label for="colorPicker2">Couleur</label>
-      <input id="colorPicker2" type="color" value="#00EAFF" />
+    <div class="row"><label for="colorPicker2">Couleur</label><input id="colorPicker2" type="color" value="#00EAFF"/></div>
+    <div class="row"><label for="fontSelect2">Police</label>
+      <select id="fontSelect2"><option value="system-ui">Système</option><option value="Arial">Arial</option><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option><option value="'Times New Roman'">Times New Roman</option><option value="'Courier New'">Courier New</option></select>
     </div>
-    <div class="row" aria-label="Police (panneau)">
-      <label for="fontSelect2">Police</label>
-      <select id="fontSelect2">
-        <option value="system-ui">Système</option>
-        <option value="Arial">Arial</option>
-        <option value="Roboto">Roboto</option>
-        <option value="Georgia">Georgia</option>
-        <option value="'Times New Roman'">Times New Roman</option>
-        <option value="'Courier New'">Courier New</option>
-      </select>
-    </div>
-    <div class="row" aria-label="Taille max (panneau)">
-      <label for="fontSizeMax2">Taille max</label>
-      <input id="fontSizeMax2" type="number" min="6" max="72" step="1" value="32" />
-    </div>
-    <div class="row" aria-label="Style (panneau)">
-      <label>Style</label>
+    <div class="row"><label for="fontSizeMax2">Taille max</label><input id="fontSizeMax2" type="number" min="6" max="72" step="1" value="32"/></div>
+    <div class="row"><label>Style</label>
       <div class="toggle-group">
         <button type="button" id="boldBtn2" class="toggle" aria-pressed="true">Gras</button>
         <button type="button" id="italicBtn2" class="toggle" aria-pressed="false">Italique</button>
@@ -378,63 +277,36 @@
     <button id="actDelete" class="side-item danger" type="button">🗑️ Supprimer le cercle</button>
   </aside>
 
-  <!-- Zone schéma -->
+  <!-- Zone -->
   <div id="stage" class="stage" aria-label="Espace de travail">
     <div id="world">
       <svg id="wires" aria-hidden="true"></svg>
-      <div id="main-node" class="node" data-id="node-0" style="left: calc(50% - 55px); top: calc(50% - 55px); --node:#00EAFF;">
-        <span class="label">Cercle principal</span>
-      </div>
+      <div id="main-node" class="node" data-id="node-0" style="left:calc(50% - 55px);top:calc(50% - 55px);--node:#00EAFF;"><span class="label">Cercle principal</span></div>
     </div>
   </div>
 
-  <!-- Menu 3 (générique) -->
+  <!-- Menu 3 -->
   <div id="menu" class="menu" role="menu" aria-hidden="true">
     <div class="menu-body">
-      <div class="row" aria-label="Titre (menu 3)">
-        <label for="titleInput3">Titre</label>
-        <input id="titleInput3" type="text" placeholder="Nom du cercle" style="flex:1" />
-      </div>
-
+      <div class="row"><label for="titleInput3">Titre</label><input id="titleInput3" type="text" placeholder="Nom du cercle" style="flex:1"/></div>
       <button data-action="add">➕ Cercle principal</button>
       <button data-action="addSmall">➕ Cercle secondaire</button>
-
-      <div class="row" aria-label="URL">
-        <button data-action="setUrl" style="flex:1">🔗 Lier une URL…</button>
-        <a id="openUrlBtnMenu" class="icon-btn small" title="Ouvrir l’URL" target="_blank" rel="noopener noreferrer">↗</a>
+      <div class="row"><button data-action="setUrl" style="flex:1">🔗 Lier une URL…</button><a id="openUrlBtnMenu" class="icon-btn small" title="Ouvrir l’URL" target="_blank" rel="noopener noreferrer">↗</a></div>
+      <div class="row"><label for="colorPicker">Couleur</label><input id="colorPicker" type="color" value="#00EAFF"/></div>
+      <div class="row"><label for="fontSelect">Police</label>
+        <select id="fontSelect"><option value="system-ui">Système</option><option value="Arial">Arial</option><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option><option value="'Times New Roman'">Times New Roman</option><option value="'Courier New'">Courier New</option></select>
       </div>
-
-      <div class="row" aria-label="Sélecteur de couleur">
-        <label for="colorPicker">Couleur</label>
-        <input id="colorPicker" type="color" value="#00EAFF" />
-      </div>
-
-      <div class="row" aria-label="Police">
-        <label for="fontSelect">Police</label>
-        <select id="fontSelect">
-          <option value="system-ui">Système</option>
-          <option value="Arial">Arial</option>
-          <option value="Roboto">Roboto</option>
-          <option value="Georgia">Georgia</option>
-          <option value="'Times New Roman'">Times New Roman</option>
-          <option value="'Courier New'">Courier New</option>
-        </select>
-      </div>
-      <div class="row" aria-label="Taille de police">
-        <label for="fontSizeMax">Taille max</label>
-        <input id="fontSizeMax" type="number" min="6" max="72" step="1" value="32" />
-      </div>
-      <div class="row" aria-label="Style de texte">
-        <label>Style</label>
+      <div class="row"><label for="fontSizeMax">Taille max</label><input id="fontSizeMax" type="number" min="6" max="72" step="1" value="32"/></div>
+      <div class="row"><label>Style</label>
         <div class="toggle-group">
           <button type="button" id="boldBtn" class="toggle" aria-pressed="true">Gras</button>
           <button type="button" id="italicBtn" class="toggle" aria-pressed="false">Italique</button>
           <button type="button" id="underlineBtn" class="toggle" aria-pressed="false">Souligné</button>
         </div>
       </div>
-
       <div class="menu-spacer"></div>
       <div class="menu-footer">
+        <button id="iconObjectiveBtn" class="icon-btn" title="Objectifs (🎯)" aria-label="Objectifs">🎯</button>
         <button id="iconTaskBtn" class="icon-btn star" title="Ajouter/éditer des tâches" aria-label="Ajouter/éditer des tâches">⭐</button>
         <button id="iconWireBtn" class="icon-btn" title="Connecter à…" aria-label="Connecter à…">🔗</button>
         <button id="iconCenterBtn" class="icon-btn" title="Centrer sur le cercle" aria-label="Centrer sur le cercle">🎯</button>
@@ -443,22 +315,18 @@
     </div>
   </div>
 
-  <!-- Menu 4 (cœur) -->
+  <!-- Menu 4 (coeur) -->
   <div id="menuHeart" class="menu" role="menu" aria-hidden="true">
     <div class="menu-body">
       <button data-action="add">➕ Cercle principal</button>
       <button data-action="addSmall">➕ Cercle secondaire</button>
       <button data-action="wire">🔗 Connecter à…</button>
-      <div class="row" aria-label="Sélecteur de couleur"><label for="colorPickerH">Couleur</label><input id="colorPickerH" type="color" value="#00EAFF" /></div>
-      <div class="row" aria-label="Police"><label for="fontSelectH">Police</label>
-        <select id="fontSelectH">
-          <option value="system-ui">Système</option><option value="Arial">Arial</option><option value="Roboto">Roboto</option>
-          <option value="Georgia">Georgia</option><option value="'Times New Roman'">Times New Roman</option><option value="'Courier New'">Courier New</option>
-        </select>
+      <div class="row"><label for="colorPickerH">Couleur</label><input id="colorPickerH" type="color" value="#00EAFF"/></div>
+      <div class="row"><label for="fontSelectH">Police</label>
+        <select id="fontSelectH"><option value="system-ui">Système</option><option value="Arial">Arial</option><option value="Roboto">Roboto</option><option value="Georgia">Georgia</option><option value="'Times New Roman'">Times New Roman</option><option value="'Courier New'">Courier New</option></select>
       </div>
-      <div class="row" aria-label="Taille de police"><label for="fontSizeMaxH">Taille max</label><input id="fontSizeMaxH" type="number" min="6" max="72" step="1" value="32" /></div>
-      <div class="row" aria-label="Style de texte">
-        <label>Style</label>
+      <div class="row"><label for="fontSizeMaxH">Taille max</label><input id="fontSizeMaxH" type="number" min="6" max="72" step="1" value="32"/></div>
+      <div class="row"><label>Style</label>
         <div class="toggle-group">
           <button type="button" id="boldBtnH" class="toggle" aria-pressed="true">Gras</button>
           <button type="button" id="italicBtnH" class="toggle" aria-pressed="false">Italique</button>
@@ -475,27 +343,27 @@
     </div>
   </div>
 
-  <!-- Outils -->
+  <!-- Toolbar -->
   <div class="toolbar" aria-label="Actions rapides">
     <button id="wireModeBtn" class="secondary">Câbler (C)</button>
     <button id="exportBtn">Exporter JSON</button>
     <button id="importBtn" class="secondary">Importer JSON</button>
     <button id="resetBtn" class="danger">Réinitialiser</button>
-    <input id="fileInput" type="file" accept="application/json" style="display:none" />
+    <input id="fileInput" type="file" accept="application/json" style="display:none"/>
   </div>
 
-  <!-- Boutons bas-droite -->
+  <!-- Boutons -->
   <button id="tasksBtn" class="home-btn" title="Voir toutes les tâches">⭐</button>
   <button id="homeBtn" class="home-btn" title="Recentrer sur le cœur">♥</button>
 
-  <!-- Modal ajout/édition tâche (par cercle) -->
+  <!-- Modale tâches (par cercle) -->
   <div id="taskEditor" class="modal" aria-hidden="true">
     <div class="card">
       <h3>Ajouter / modifier une tâche</h3>
-      <div class="row"><label>Titre</label><input id="taskTitle" type="text" placeholder="Titre de la tâche" /></div>
+      <div class="row"><label>Titre</label><input id="taskTitle" type="text" placeholder="Titre de la tâche"/></div>
       <div class="row"><label>Note</label><textarea id="taskDesc" rows="4" placeholder="Description ou notes"></textarea></div>
-      <div class="row"><label>Début</label><input id="taskStart" type="date" /></div>
-      <div class="row"><label>Fin</label><input id="taskEnd" type="date" /></div>
+      <div class="row"><label>Début</label><input id="taskStart" type="date"/></div>
+      <div class="row"><label>Fin</label><input id="taskEnd" type="date"/></div>
 
       <h3>Tâches du cercle</h3>
       <div id="nodeTasksList" class="list"></div>
@@ -507,18 +375,15 @@
     </div>
   </div>
 
-  <!-- Modal liste tâches (globale) -->
+  <!-- Modale liste tâches (globale) -->
   <div id="tasksModal" class="modal" aria-hidden="true">
     <div class="card">
       <h3>Ajouter une nouvelle tâche</h3>
-      <!-- Nouveau formulaire global d'ajout -->
-      <div class="row"><label>Cercle</label>
-        <select id="taskGlobalNodeSelect"></select>
-      </div>
-      <div class="row"><label>Titre</label><input id="taskGlobalTitle" type="text" placeholder="Titre de la tâche" /></div>
+      <div class="row"><label>Cercle</label><select id="taskGlobalNodeSelect"></select></div>
+      <div class="row"><label>Titre</label><input id="taskGlobalTitle" type="text" placeholder="Titre de la tâche"/></div>
       <div class="row"><label>Note</label><textarea id="taskGlobalDesc" rows="3" placeholder="Description ou notes"></textarea></div>
-      <div class="row"><label>Début</label><input id="taskGlobalStart" type="date" /></div>
-      <div class="row"><label>Fin</label><input id="taskGlobalEnd" type="date" /></div>
+      <div class="row"><label>Début</label><input id="taskGlobalStart" type="date"/></div>
+      <div class="row"><label>Fin</label><input id="taskGlobalEnd" type="date"/></div>
       <div class="actions">
         <button id="taskGlobalReset" class="btn secondary">Annuler</button>
         <button id="taskGlobalSave" class="btn">Ajouter</button>
@@ -526,999 +391,1065 @@
 
       <h3>Liste des tâches</h3>
       <div id="tasksContainer" class="list"></div>
-      <div class="actions">
-        <button id="tasksClose" class="btn">Fermer</button>
-      </div>
+      <div class="actions"><button id="tasksClose" class="btn">Fermer</button></div>
     </div>
   </div>
 
-  <script>
-    /* Elements */
-    const stage = document.getElementById('stage');
-    const world = document.getElementById('world');
-    const svg = document.getElementById('wires');
-    const menu = document.getElementById('menu');           
-    const menuHeart = document.getElementById('menuHeart'); 
-    const mainNode = document.getElementById('main-node');
-    const exportBtn = document.getElementById('exportBtn');
-    const importBtn = document.getElementById('importBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const fileInput = document.getElementById('fileInput');
-    const homeBtn = document.getElementById('homeBtn');
-    const wireModeBtn = document.getElementById('wireModeBtn');
-    const tasksBtn = document.getElementById('tasksBtn');
+  <!-- Modale Objectifs -->
+  <div id="objectiveEditor" class="modal" aria-hidden="true">
+    <div class="card">
+      <h3>Objectifs du cercle</h3>
 
-    /* Menu 3 controls */
-    const titleInput3 = document.getElementById('titleInput3');
-    const colorPicker = document.getElementById('colorPicker');
-    const fontSelect = document.getElementById('fontSelect');
-    const fontSizeMax = document.getElementById('fontSizeMax');
-    const boldBtn = document.getElementById('boldBtn');
-    const italicBtn = document.getElementById('italicBtn');
-    const underlineBtn = document.getElementById('underlineBtn');
-    const iconWireBtn = document.getElementById('iconWireBtn');
-    const iconCenterBtn = document.getElementById('iconCenterBtn');
-    const iconDeleteBtn = document.getElementById('iconDeleteBtn');
-    const iconTaskBtn = document.getElementById('iconTaskBtn');
-    const openUrlBtnMenu = document.getElementById('openUrlBtnMenu');
+      <div class="row"><label>Objectif</label><input id="objTitle" type="text" placeholder="Ex: Mettre en place un collaborateur"/></div>
+      <div class="row"><label>Note</label><textarea id="objDesc" rows="3" placeholder="Description / critères de succès"></textarea></div>
+      <div class="row"><label>Échéance</label><input id="objDue" type="date"/></div>
 
-    /* Menu 4 controls (coeur) */
-    const colorPickerH = document.getElementById('colorPickerH');
-    const fontSelectH = document.getElementById('fontSelectH');
-    const fontSizeMaxH = document.getElementById('fontSizeMaxH');
-    const boldBtnH = document.getElementById('boldBtnH');
-    const italicBtnH = document.getElementById('italicBtnH');
-    const underlineBtnH = document.getElementById('underlineBtnH');
-    const iconColorBtnH = document.getElementById('iconColorBtnH');
-    const iconCenterBtnH = document.getElementById('iconCenterBtnH');
-    const iconDeleteBtnH = document.getElementById('iconDeleteBtnH');
+      <div class="row" style="align-items:flex-start">
+        <label>Tâches liées</label>
+        <div id="objTasksChecklist" style="flex:1; display:grid; gap:6px;"></div>
+      </div>
 
-    /* Menus 1/2 */
-    const principalList = document.getElementById('principalList');
-    const actionsPanel = document.getElementById('actions');
-    const selectedInfo = document.getElementById('selectedInfo');
-    const titleInput2 = document.getElementById('titleInput2');
-    const actAddPrincipal = document.getElementById('actAddPrincipal');
-    const actAddSecondary = document.getElementById('actAddSecondary');
-    const actWire = document.getElementById('actWire');
-    const actCenter = document.getElementById('actCenter');
-    const actDelete = document.getElementById('actDelete');
-    const colorPicker2 = document.getElementById('colorPicker2');
-    const fontSelect2 = document.getElementById('fontSelect2');
-    const fontSizeMax2 = document.getElementById('fontSizeMax2');
-    const boldBtn2 = document.getElementById('boldBtn2');
-    const italicBtn2 = document.getElementById('italicBtn2');
-    const underlineBtn2 = document.getElementById('underlineBtn2');
-    const closeMenu2Btn = document.getElementById('closeMenu2');
+      <div class="actions">
+        <button id="objCancel" class="btn secondary">Annuler</button>
+        <button id="objSave" class="btn">Enregistrer l’objectif</button>
+      </div>
 
-    /* Modales Tâches */
-    const taskEditor = document.getElementById('taskEditor');
-    const taskTitle = document.getElementById('taskTitle');
-    const taskDesc = document.getElementById('taskDesc');
-    const taskStart = document.getElementById('taskStart');
-    const taskEnd = document.getElementById('taskEnd');
-    const taskSave = document.getElementById('taskSave');
-    const taskCancel = document.getElementById('taskCancel');
-    const nodeTasksList = document.getElementById('nodeTasksList');
-    const tasksModal = document.getElementById('tasksModal');
-    const tasksContainer = document.getElementById('tasksContainer');
-    const tasksClose = document.getElementById('tasksClose');
+      <h3>Liste des objectifs</h3>
+      <div id="objectivesList" class="list"></div>
+    </div>
+  </div>
 
-    /* ⬇️ Nouveau : éléments du formulaire d'ajout global */
-    const taskGlobalNodeSelect = document.getElementById('taskGlobalNodeSelect');
-    const taskGlobalTitle = document.getElementById('taskGlobalTitle');
-    const taskGlobalDesc = document.getElementById('taskGlobalDesc');
-    const taskGlobalStart = document.getElementById('taskGlobalStart');
-    const taskGlobalEnd = document.getElementById('taskGlobalEnd');
-    const taskGlobalSave = document.getElementById('taskGlobalSave');
-    const taskGlobalReset = document.getElementById('taskGlobalReset');
+<script>
+/* ========== Elements ========== */
+const stage=document.getElementById('stage');
+const world=document.getElementById('world');
+const svg=document.getElementById('wires');
+const menu=document.getElementById('menu');
+const menuHeart=document.getElementById('menuHeart');
+const mainNode=document.getElementById('main-node');
+const exportBtn=document.getElementById('exportBtn');
+const importBtn=document.getElementById('importBtn');
+const resetBtn=document.getElementById('resetBtn');
+const fileInput=document.getElementById('fileInput');
+const homeBtn=document.getElementById('homeBtn');
+const wireModeBtn=document.getElementById('wireModeBtn');
+const tasksBtn=document.getElementById('tasksBtn');
 
-    /* State */
-    let currentNode = null;
-    let idCounter = 1;
-    let menu2Locked = false;
-    const camera = { x: 0, y: 0, z: 1 };
-    const BIG_SIZE = 110, SMALL_SIZE = 55;
-    const SNAP_GAP = 12, SNAP_RANGE = 120;
-    let snapHint = null;
+/* Menu 3 controls */
+const titleInput3=document.getElementById('titleInput3');
+const colorPicker=document.getElementById('colorPicker');
+const fontSelect=document.getElementById('fontSelect');
+const fontSizeMax=document.getElementById('fontSizeMax');
+const boldBtn=document.getElementById('boldBtn');
+const italicBtn=document.getElementById('italicBtn');
+const underlineBtn=document.getElementById('underlineBtn');
+const iconWireBtn=document.getElementById('iconWireBtn');
+const iconCenterBtn=document.getElementById('iconCenterBtn');
+const iconDeleteBtn=document.getElementById('iconDeleteBtn');
+const iconTaskBtn=document.getElementById('iconTaskBtn');
+const iconObjectiveBtn=document.getElementById('iconObjectiveBtn');
+const openUrlBtnMenu=document.getElementById('openUrlBtnMenu');
 
-    /* Câblage */
-    const wiring = { active:false, source:null, ghost:null };
+/* Menu 4 controls */
+const colorPickerH=document.getElementById('colorPickerH');
+const fontSelectH=document.getElementById('fontSelectH');
+const fontSizeMaxH=document.getElementById('fontSizeMaxH');
+const boldBtnH=document.getElementById('boldBtnH');
+const italicBtnH=document.getElementById('italicBtnH');
+const underlineBtnH=document.getElementById('underlineBtnH');
+const iconColorBtnH=document.getElementById('iconColorBtnH');
+const iconCenterBtnH=document.getElementById('iconCenterBtnH');
+const iconDeleteBtnH=document.getElementById('iconDeleteBtnH');
 
-    /* Tâches (modale par nœud) */
-    let taskEditorNode = null;
-    let editingTaskId = null;
+/* Menus 1/2 */
+const principalList=document.getElementById('principalList');
+const actionsPanel=document.getElementById('actions');
+const selectedInfo=document.getElementById('selectedInfo');
+const titleInput2=document.getElementById('titleInput2');
+const actAddPrincipal=document.getElementById('actAddPrincipal');
+const actAddSecondary=document.getElementById('actAddSecondary');
+const actWire=document.getElementById('actWire');
+const actCenter=document.getElementById('actCenter');
+const actDelete=document.getElementById('actDelete');
+const colorPicker2=document.getElementById('colorPicker2');
+const fontSelect2=document.getElementById('fontSelect2');
+const fontSizeMax2=document.getElementById('fontSizeMax2');
+const boldBtn2=document.getElementById('boldBtn2');
+const italicBtn2=document.getElementById('italicBtn2');
+const underlineBtn2=document.getElementById('underlineBtn2');
+const closeMenu2Btn=document.getElementById('closeMenu2');
 
-    /* Utils */
-    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
-    const approxEq = (a,b,eps=0.5)=>Math.abs(a-b)<=eps;
-    const stageRect = () => stage.getBoundingClientRect();
-    const centerInWorld = (el) => ({ x: el.offsetLeft + el.offsetWidth/2, y: el.offsetTop + el.offsetHeight/2 });
-    function applyCamera(){ world.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.z})`; }
-    function pointerToWorld(e){ const sr=stageRect(); return { wx:(e.clientX - sr.left - camera.x)/camera.z, wy:(e.clientY - sr.top - camera.y)/camera.z }; }
-    const isModalOpen = (m) => m && m.style.display === 'flex';
+/* Modales Tâches */
+const taskEditor=document.getElementById('taskEditor');
+const taskTitle=document.getElementById('taskTitle');
+const taskDesc=document.getElementById('taskDesc');
+const taskStart=document.getElementById('taskStart');
+const taskEnd=document.getElementById('taskEnd');
+const taskSave=document.getElementById('taskSave');
+const taskCancel=document.getElementById('taskCancel');
+const nodeTasksList=document.getElementById('nodeTasksList');
+const tasksModal=document.getElementById('tasksModal');
+const tasksContainer=document.getElementById('tasksContainer');
+const tasksClose=document.getElementById('tasksClose');
 
-    /* Couleur utils */
-    function normalizeHex(input){ if(!input) return null; let m=String(input).match(/^#?([0-9a-fA-F]{6})$/); if(m) return '#'+m[1].toUpperCase(); m=String(input).match(/^#?([0-9a-fA-F]{3})$/); if(m) return '#'+m[1].split('').map(c=>c+c).join('').toUpperCase(); return null; }
-    function toHex(input){ if(!input) return null; const hex=String(input).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if(hex){ const h=hex[1]; return '#'+(h.length===3?h.split('').map(c=>c+c).join(''):h).toUpperCase(); } const m=String(input).match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i); if(!m) return null; const [r,g,b]=[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Math.round(parseFloat(v))))); return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase(); }
+/* Global task form */
+const taskGlobalNodeSelect=document.getElementById('taskGlobalNodeSelect');
+const taskGlobalTitle=document.getElementById('taskGlobalTitle');
+const taskGlobalDesc=document.getElementById('taskGlobalDesc');
+const taskGlobalStart=document.getElementById('taskGlobalStart');
+const taskGlobalEnd=document.getElementById('taskGlobalEnd');
+const taskGlobalSave=document.getElementById('taskGlobalSave');
+const taskGlobalReset=document.getElementById('taskGlobalReset');
 
-    /* Lignes */
-    const qLines = ()=> svg.querySelectorAll('line');
-    function updateLineEnds(line){
-      const from = world.querySelector(`[data-id="${line.dataset.from}"]`);
-      const to   = world.querySelector(`[data-id="${line.dataset.to}"]`);
-      if(!from||!to) return;
-      const c1 = centerInWorld(from), c2 = centerInWorld(to);
-      line.setAttribute('x1', c1.x); line.setAttribute('y1', c1.y);
-      line.setAttribute('x2', c2.x); line.setAttribute('y2', c2.y);
-    }
-    function updateLinesFor(el){ const id=el.dataset.id; qLines().forEach(l=>{ if(l.dataset.from===id||l.dataset.to===id) updateLineEnds(l); }); }
-    function updateAllLines(){ qLines().forEach(updateLineEnds); }
-    function findLine(aId,bId){ for(const l of qLines()){ if((l.dataset.from===aId&&l.dataset.to===bId)||(l.dataset.from===bId&&l.dataset.to===aId)) return l; } return null; }
-    function attachLineEvents(line){
-      line.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        if(confirm('Supprimer cette connexion ?')){
-          line.remove();
-          saveState();
-          refreshSidebar();
-        }
-      });
-    }
-    function isPrincipalNode(n){ const w=parseFloat(getComputedStyle(n).width)||0; return approxEq(w,BIG_SIZE); }
-    function isSecondaryNode(n){ const w=parseFloat(getComputedStyle(n).width)||0; return approxEq(w,SMALL_SIZE); }
-    function styleLineByNodes(line){
-      const a = world.querySelector(`[data-id="${line.dataset.from}"]`);
-      const b = world.querySelector(`[data-id="${line.dataset.to}"]`);
-      if(a && b && isSecondaryNode(a) && isSecondaryNode(b)){
-        line.setAttribute('stroke', 'rgba(234,255,255,.6)');
-        line.setAttribute('stroke-dasharray', '6 6');
-        line.style.filter = 'drop-shadow(0 0 6px rgba(234,255,255,.35))';
-      }else{
-        line.setAttribute('stroke', 'rgba(0,234,255,.55)');
-        line.removeAttribute('stroke-dasharray');
-        line.style.filter = 'drop-shadow(0 0 6px rgba(0,234,255,.35))';
-      }
-    }
-    function createLine(fromEl,toEl){
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('stroke','rgba(0,234,255,.55)'); line.setAttribute('stroke-width','2'); line.setAttribute('stroke-linecap','round');
-      line.dataset.from=fromEl.dataset.id; line.dataset.to=toEl.dataset.id;
-      svg.appendChild(line); styleLineByNodes(line); updateLineEnds(line); attachLineEvents(line); return line;
-    }
+/* Modale Objectifs */
+const objectiveEditor=document.getElementById('objectiveEditor');
+const objTitle=document.getElementById('objTitle');
+const objDesc=document.getElementById('objDesc');
+const objDue=document.getElementById('objDue');
+const objSave=document.getElementById('objSave');
+const objCancel=document.getElementById('objCancel');
+const objTasksChecklist=document.getElementById('objTasksChecklist');
+const objectivesList=document.getElementById('objectivesList');
 
-    /* Labels */
-    function fitLabelToNode(node){
-      const label=node.querySelector('.label'); if(!label) return;
-      label.style.width='100%'; label.style.maxWidth='100%'; label.style.whiteSpace='normal'; label.style.overflow='hidden'; label.style.wordBreak='break-word';
-      const cs=getComputedStyle(node);
-      const padX=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
-      const padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
-      const contentW=Math.max(0,node.clientWidth-padX);
-      const contentH=Math.max(0,node.clientHeight-padY);
-      const cap=parseFloat(node.dataset.maxFont);
-      let low=6, high=Math.max(6,Math.floor(Math.min(contentH, Number.isFinite(cap)?cap:contentH))), best=low;
-      if(!label.textContent.trim()){ label.style.fontSize=Math.min(16,high)+'px'; return; }
-      for(let i=0;i<12 && low<=high;i++){ const mid=Math.floor((low+high)/2); label.style.fontSize=mid+'px'; const fits=label.scrollWidth<=contentW && label.scrollHeight<=contentH; if(fits){ best=mid; low=mid+1; } else { high=mid-1; } }
-      label.style.fontSize=best+'px';
-    }
-    const fitAllLabels=()=> world.querySelectorAll('.node').forEach(fitLabelToNode);
+/* ========== State ========== */
+let currentNode=null;
+let idCounter=1;
+let menu2Locked=false;
+const camera={x:0,y:0,z:1};
+const BIG_SIZE=110, SMALL_SIZE=55;
+const SNAP_GAP=12, SNAP_RANGE=120;
+let snapHint=null;
 
-    /* Menu 2 */
-    function showActionsPanel(show){ actionsPanel.style.display = show ? 'block' : 'none'; }
-    function enableActionPanel(enabled){
-      const ctrls=actionsPanel.querySelectorAll('button,select,input');
-      ctrls.forEach(el=>{ el.disabled=!enabled; if(!enabled && el.classList.contains('toggle')) el.setAttribute('aria-pressed','false'); });
-      selectedInfo.textContent = enabled && currentNode ? (currentNode.querySelector('.label')?.textContent || currentNode.dataset.id) : 'Aucun cercle sélectionné';
-      titleInput2.value = enabled && currentNode ? (currentNode.querySelector('.label')?.textContent || '') : '';
-    }
-    function syncActionPanel(){
-      if(!currentNode){ enableActionPanel(false); return; }
-      enableActionPanel(true);
-      const hex = toHex(getComputedStyle(currentNode).backgroundColor) || '#00EAFF';
-      colorPicker.value=hex; colorPicker2.value=hex; colorPickerH.value=hex;
-      const label=currentNode.querySelector('.label');
-      const fam = label.style.fontFamily && Array.from(fontSelect.options).some(o=>o.value===label.style.fontFamily) ? label.style.fontFamily : 'system-ui';
-      fontSelect.value=fam; fontSelect2.value=fam; fontSelectH.value=fam;
-      const cap=currentNode.dataset.maxFont || '32'; fontSizeMax.value=cap; fontSizeMax2.value=cap; fontSizeMaxH.value=cap;
-      const cs=getComputedStyle(label);
-      const fw=parseInt(cs.fontWeight,10); const isBold=(fw>=600)||cs.fontWeight==='bold';
-      const isItalic=cs.fontStyle==='italic';
-      const isUnderline=(cs.textDecorationLine||cs.textDecoration||'').includes('underline');
-      [boldBtn,boldBtn2,boldBtnH].forEach(b=>b.setAttribute('aria-pressed', isBold?'true':'false'));
-      [italicBtn,italicBtn2,italicBtnH].forEach(b=>b.setAttribute('aria-pressed', isItalic?'true':'false'));
-      [underlineBtn,underlineBtn2,underlineBtnH].forEach(b=>b.setAttribute('aria-pressed', isUnderline?'true':'false'));
-      titleInput3.value = label.textContent || '';
-      syncOpenUrlIcon();
-    }
-    function setCurrentNode(node,{fromMenu1=false,preserveMenu2=false}={}){
-      world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
-      currentNode=node||null;
-      if(currentNode) currentNode.classList.add('selected');
-      syncActionPanel();
-      if(fromMenu1){ menu2Locked=true; showActionsPanel(true); }
-      else if(!preserveMenu2 && !menu2Locked){ showActionsPanel(false); }
-    }
+/* Wiring */
+const wiring={active:false, source:null, ghost:null};
 
-    /* Caméra */
-    function centerOnNode(node){
-      if(!node) return;
-      const sr=stageRect();
-      const c=centerInWorld(node);
-      camera.x = sr.width/2  - c.x*camera.z;
-      camera.y = sr.height/2 - c.y*camera.z;
-      applyCamera();
-      node.classList.add('pulse'); setTimeout(()=>node.classList.remove('pulse'),800);
-    }
-    function centerOnCurrent(){ if(currentNode) centerOnNode(currentNode); }
-    homeBtn.addEventListener('click',()=> centerOnNode(mainNode));
-    closeMenu2Btn.addEventListener('click', ()=>{ menu2Locked=false; showActionsPanel(false); });
+/* Task editor state */
+let taskEditorNode=null;
+let editingTaskId=null;
 
-    /* Graphe & déplacement liés */
-    function neighborsOf(id){
-      const res=[]; qLines().forEach(l=>{ if(l.dataset.from===id) res.push(l.dataset.to); else if(l.dataset.to===id) res.push(l.dataset.from); });
-      return Array.from(new Set(res));
-    }
-    function principalNeighborsOf(nodeEl){
-      const ids = neighborsOf(nodeEl.dataset.id);
-      return ids.map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isPrincipalNode);
-    }
-    function secondariesOfPrincipal(principalEl){
-      const ids = neighborsOf(principalEl.dataset.id);
-      return ids.map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isSecondaryNode);
-    }
-    function secondariesUniqueToPrincipal(principalEl){
-      return secondariesOfPrincipal(principalEl).filter(sec => principalNeighborsOf(sec).length === 1);
-    }
-    function nearestPrincipal(toNode){
-      const sC=centerInWorld(toNode); let best=null,bestDist=Infinity;
-      world.querySelectorAll('.node').forEach(n=>{ if(!isPrincipalNode(n)||n===toNode) return; const c=centerInWorld(n); const d=Math.hypot(sC.x-c.x,sC.y-c.y); if(d<bestDist){ best=n; bestDist=d; }});
-      return {node:best, dist:bestDist};
-    }
-    function snapSecondaryToPrincipal(sec, principal){
-      const pC=centerInWorld(principal); const sW=sec.offsetWidth, sH=sec.offsetHeight;
-      const angle=Math.atan2( (sec.offsetTop + sH/2) - pC.y, (sec.offsetLeft + sW/2) - pC.x ) || 0;
-      const radius = BIG_SIZE/2 + sW/2 + SNAP_GAP;
-      const cx = pC.x + radius*Math.cos(angle);
-      const cy = pC.y + radius*Math.sin(angle);
-      sec.style.left = (cx - sW/2) + 'px';
-      sec.style.top  = (cy - sH/2) + 'px';
-      updateLinesFor(sec);
-    }
-    function ensureEdgeExists(a,b){
-      if(!findLine(a.dataset.id,b.dataset.id)) createLine(a,b);
-    }
+/* Objective editor state */
+let objectiveEditorNode=null;
+let editingObjectiveId=null;
 
-    /* URL badge */
-    function updateUrlBadge(node){
-      const old = node.querySelector('.url-badge');
-      if(old) old.remove();
-      const url = node.dataset.url;
-      if(!url) return;
-      const a = document.createElement('a');
-      a.className = 'url-badge';
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.title = 'Ouvrir le lien';
-      a.textContent = '🔗';
-      a.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
-      a.addEventListener('click', e=>{ e.stopPropagation(); });
-      node.appendChild(a);
-    }
-    function setNodeUrl(node, raw){
-      const v = (raw||'').trim();
-      if(!v){ delete node.dataset.url; updateUrlBadge(node); syncOpenUrlIcon(); saveState(); return; }
-      let url = v;
-      if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
-      try{ new URL(url); }catch{ alert('URL invalide.'); return; }
-      node.dataset.url = url;
-      updateUrlBadge(node);
-      syncOpenUrlIcon();
-      saveState();
-    }
-    function syncOpenUrlIcon(){
-      if(!openUrlBtnMenu) return;
-      const url = currentNode?.dataset?.url;
-      if(url){
-        openUrlBtnMenu.href = url;
-        openUrlBtnMenu.style.opacity = '1';
-        openUrlBtnMenu.style.pointerEvents = 'auto';
-        openUrlBtnMenu.title = 'Ouvrir : ' + url;
-      }else{
-        openUrlBtnMenu.removeAttribute('href');
-        openUrlBtnMenu.style.opacity = '.4';
-        openUrlBtnMenu.style.pointerEvents = 'none';
-        openUrlBtnMenu.title = 'Aucune URL';
-      }
-    }
+/* ========== Utils ========== */
+const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
+const approxEq=(a,b,eps=0.5)=>Math.abs(a-b)<=eps;
+const stageRect=()=>stage.getBoundingClientRect();
+const centerInWorld=(el)=>({x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2});
+function applyCamera(){ world.style.transform=`translate(${camera.x}px, ${camera.y}px) scale(${camera.z})`; }
+function pointerToWorld(e){ const sr=stageRect(); return {wx:(e.clientX-sr.left-camera.x)/camera.z, wy:(e.clientY-sr.top-camera.y)/camera.z}; }
+const isModalOpen=(m)=>m && m.style.display==='flex';
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-    /* Tâches */
-    function updateTaskBadge(node){
-      const old = node.querySelector('.task-badge');
-      if(old) old.remove();
-      const tasks = node._tasks || [];
-      if(tasks.length===0) return;
-      const b = document.createElement('div');
-      b.className = 'task-badge';
-      b.textContent = '⭐';
-      b.addEventListener('pointerdown', e=> e.stopPropagation());
-      b.addEventListener('click', e=> e.stopPropagation());
-      node.appendChild(b);
-    }
+/* Color utils */
+function normalizeHex(input){ if(!input) return null; let m=String(input).match(/^#?([0-9a-fA-F]{6})$/); if(m) return '#'+m[1].toUpperCase(); m=String(input).match(/^#?([0-9a-fA-F]{3})$/); if(m) return '#'+m[1].split('').map(c=>c+c).join('').toUpperCase(); return null; }
+function toHex(input){ if(!input) return null; const hex=String(input).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if(hex){ const h=hex[1]; return '#'+(h.length===3?h.split('').map(c=>c+c).join(''):h).toUpperCase(); } const m=String(input).match(/rgba?\(\s*([0-9.]+)[,\s]+([0-9.]+)[,\s]+([0-9.]+)/i); if(!m) return null; const [r,g,b]=[m[1],m[2],m[3]].map(v=>Math.max(0,Math.min(255,Math.round(parseFloat(v))))); return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase(); }
 
-    function addTaskToNode(node, title, desc, start, end){
-      node._tasks = node._tasks || [];
-      if(node._tasks.length >= 10){
-        alert('Limite de 10 tâches par cercle atteinte.');
-        return false;
-      }
-      node._tasks.push({ id: 't'+Date.now()+Math.random().toString(36).slice(2,6), title, desc, start, end });
-      updateTaskBadge(node);
-      saveState();
-      return true;
-    }
+/* Lines */
+const qLines=()=>svg.querySelectorAll('line');
+function updateLineEnds(line){
+  const from=world.querySelector(`[data-id="${line.dataset.from}"]`);
+  const to=world.querySelector(`[data-id="${line.dataset.to}"]`);
+  if(!from||!to) return;
+  const c1=centerInWorld(from), c2=centerInWorld(to);
+  line.setAttribute('x1',c1.x); line.setAttribute('y1',c1.y);
+  line.setAttribute('x2',c2.x); line.setAttribute('y2',c2.y);
+}
+function updateLinesFor(el){ const id=el.dataset.id; qLines().forEach(l=>{ if(l.dataset.from===id||l.dataset.to===id) updateLineEnds(l); }); }
+function updateAllLines(){ qLines().forEach(updateLineEnds); }
+function findLine(aId,bId){ for(const l of qLines()){ if((l.dataset.from===aId&&l.dataset.to===bId)||(l.dataset.from===bId&&l.dataset.to===aId)) return l; } return null; }
+function attachLineEvents(line){
+  line.addEventListener('click',(e)=>{ e.stopPropagation(); if(confirm('Supprimer cette connexion ?')){ line.remove(); saveState(); refreshSidebar(); }});
+}
+function isPrincipalNode(n){ const w=parseFloat(getComputedStyle(n).width)||0; return approxEq(w,BIG_SIZE); }
+function isSecondaryNode(n){ const w=parseFloat(getComputedStyle(n).width)||0; return approxEq(w,SMALL_SIZE); }
+function styleLineByNodes(line){
+  const a=world.querySelector(`[data-id="${line.dataset.from}"]`);
+  const b=world.querySelector(`[data-id="${line.dataset.to}"]`);
+  if(a&&b&&isSecondaryNode(a)&&isSecondaryNode(b)){
+    line.setAttribute('stroke','rgba(234,255,255,.6)');
+    line.setAttribute('stroke-dasharray','6 6');
+    line.style.filter='drop-shadow(0 0 6px rgba(234,255,255,.35))';
+  }else{
+    line.setAttribute('stroke','rgba(0,234,255,.55)');
+    line.removeAttribute('stroke-dasharray');
+    line.style.filter='drop-shadow(0 0 6px rgba(0,234,255,.35))';
+  }
+}
+function createLine(fromEl,toEl){
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('stroke','rgba(0,234,255,.55)'); line.setAttribute('stroke-width','2'); line.setAttribute('stroke-linecap','round');
+  line.dataset.from=fromEl.dataset.id; line.dataset.to=toEl.dataset.id;
+  svg.appendChild(line); styleLineByNodes(line); updateLineEnds(line); attachLineEvents(line); return line;
+}
 
-    function updateTaskOnNode(node, taskId, patch){
-      if(!node || !node._tasks) return;
-      const t = node._tasks.find(x=>x.id===taskId);
-      if(!t) return;
-      Object.assign(t, patch);
-      updateTaskBadge(node);
-      saveState();
-    }
+/* Labels */
+function fitLabelToNode(node){
+  const label=node.querySelector('.label'); if(!label) return;
+  label.style.width='100%'; label.style.maxWidth='100%'; label.style.whiteSpace='normal'; label.style.overflow='hidden'; label.style.wordBreak='break-word';
+  const cs=getComputedStyle(node);
+  const padX=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+  const padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+  const contentW=Math.max(0,node.clientWidth-padX);
+  const contentH=Math.max(0,node.clientHeight-padY);
+  const cap=parseFloat(node.dataset.maxFont);
+  let low=6, high=Math.max(6,Math.floor(Math.min(contentH, Number.isFinite(cap)?cap:contentH))), best=low;
+  if(!label.textContent.trim()){ label.style.fontSize=Math.min(16,high)+'px'; return; }
+  for(let i=0;i<12 && low<=high;i++){
+    const mid=Math.floor((low+high)/2); label.style.fontSize=mid+'px';
+    const fits=label.scrollWidth<=contentW && label.scrollHeight<=contentH;
+    if(fits){ best=mid; low=mid+1; } else { high=mid-1; }
+  }
+  label.style.fontSize=best+'px';
+}
+const fitAllLabels=()=>world.querySelectorAll('.node').forEach(fitLabelToNode);
 
-    function deleteTaskFromNode(node, taskId){
-      if(!node || !node._tasks) return;
-      node._tasks = node._tasks.filter(t => t.id !== taskId);
-      updateTaskBadge(node);
-      saveState();
-      if(taskEditorNode === node && isModalOpen(taskEditor)) renderNodeTasksList();
-      if(isModalOpen(tasksModal)) renderGlobalTasksList();
-    }
+/* Actions panel */
+function showActionsPanel(show){ actionsPanel.style.display=show?'block':'none'; }
+function enableActionPanel(enabled){
+  const ctrls=actionsPanel.querySelectorAll('button,select,input');
+  ctrls.forEach(el=>{ el.disabled=!enabled; if(!enabled && el.classList.contains('toggle')) el.setAttribute('aria-pressed','false'); });
+  selectedInfo.textContent = enabled&&currentNode ? (currentNode.querySelector('.label')?.textContent||currentNode.dataset.id) : 'Aucun cercle sélectionné';
+  titleInput2.value = enabled&&currentNode ? (currentNode.querySelector('.label')?.textContent||'') : '';
+}
+function syncActionPanel(){
+  if(!currentNode){ enableActionPanel(false); return; }
+  enableActionPanel(true);
+  const hex=toHex(getComputedStyle(currentNode).backgroundColor) || '#00EAFF';
+  colorPicker.value=hex; colorPicker2.value=hex; colorPickerH.value=hex;
+  const label=currentNode.querySelector('.label');
+  const fam=label.style.fontFamily && Array.from(fontSelect.options).some(o=>o.value===label.style.fontFamily) ? label.style.fontFamily : 'system-ui';
+  fontSelect.value=fam; fontSelect2.value=fam; fontSelectH.value=fam;
+  const cap=currentNode.dataset.maxFont || '32'; fontSizeMax.value=cap; fontSizeMax2.value=cap; fontSizeMaxH.value=cap;
+  const cs=getComputedStyle(label);
+  const fw=parseInt(cs.fontWeight,10); const isBold=(fw>=600)||cs.fontWeight==='bold';
+  const isItalic=cs.fontStyle==='italic';
+  const isUnderline=(cs.textDecorationLine||cs.textDecoration||'').includes('underline');
+  [boldBtn,boldBtn2,boldBtnH].forEach(b=>b.setAttribute('aria-pressed',isBold?'true':'false'));
+  [italicBtn,italicBtn2,italicBtnH].forEach(b=>b.setAttribute('aria-pressed',isItalic?'true':'false'));
+  [underlineBtn,underlineBtn2,underlineBtnH].forEach(b=>b.setAttribute('aria-pressed',isUnderline?'true':'false'));
+  titleInput3.value = label.textContent || '';
+  syncOpenUrlIcon();
+}
+function setCurrentNode(node,{fromMenu1=false,preserveMenu2=false}={}){
+  world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+  currentNode=node||null;
+  if(currentNode) currentNode.classList.add('selected');
+  syncActionPanel();
+  if(fromMenu1){ menu2Locked=true; showActionsPanel(true); }
+  else if(!preserveMenu2 && !menu2Locked){ showActionsPanel(false); }
+}
 
-    function fmtRange(start, end){
-      const s = start ? start : null;
-      const e = end ? end : null;
-      if(!s && !e) return '';
-      if(s && e) return `Du ${s} au ${e}`;
-      if(s && !e) return `À partir du ${s}`;
-      if(!s && e) return `Jusqu'au ${e}`;
-    }
+/* Camera */
+function centerOnNode(node){
+  if(!node) return;
+  const sr=stageRect(); const c=centerInWorld(node);
+  camera.x = sr.width/2 - c.x*camera.z;
+  camera.y = sr.height/2 - c.y*camera.z;
+  applyCamera();
+  node.classList.add('pulse'); setTimeout(()=>node.classList.remove('pulse'),800);
+}
+function centerOnCurrent(){ if(currentNode) centerOnNode(currentNode); }
+homeBtn.addEventListener('click',()=>centerOnNode(mainNode));
+closeMenu2Btn.addEventListener('click',()=>{ menu2Locked=false; showActionsPanel(false); });
 
-    function openTaskEditor(forNode, taskIdToEdit=null){
-      if(!forNode) return;
-      setCurrentNode(forNode,{preserveMenu2:true});
-      taskEditorNode = forNode;
+/* Graph helpers */
+function neighborsOf(id){
+  const res=[]; qLines().forEach(l=>{ if(l.dataset.from===id) res.push(l.dataset.to); else if(l.dataset.to===id) res.push(l.dataset.from); });
+  return Array.from(new Set(res));
+}
+function principalNeighborsOf(nodeEl){ const ids=neighborsOf(nodeEl.dataset.id); return ids.map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isPrincipalNode); }
+function secondariesOfPrincipal(principalEl){
+  const ids=neighborsOf(principalEl.dataset.id);
+  return ids.map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isSecondaryNode);
+}
+function secondariesUniqueToPrincipal(principalEl){
+  return secondariesOfPrincipal(principalEl).filter(sec=>principalNeighborsOf(sec).length===1);
+}
+function nearestPrincipal(toNode){
+  const sC=centerInWorld(toNode); let best=null,bestDist=Infinity;
+  world.querySelectorAll('.node').forEach(n=>{
+    if(!isPrincipalNode(n)||n===toNode) return;
+    const c=centerInWorld(n); const d=Math.hypot(sC.x-c.x,sC.y-c.y); if(d<bestDist){ best=n; bestDist=d; }
+  });
+  return {node:best, dist:bestDist};
+}
+function snapSecondaryToPrincipal(sec, principal){
+  const pC=centerInWorld(principal); const sW=sec.offsetWidth, sH=sec.offsetHeight;
+  const angle=Math.atan2( (sec.offsetTop + sH/2) - pC.y, (sec.offsetLeft + sW/2) - pC.x ) || 0;
+  const radius = BIG_SIZE/2 + sW/2 + SNAP_GAP;
+  const cx = pC.x + radius*Math.cos(angle); const cy = pC.y + radius*Math.sin(angle);
+  sec.style.left=(cx - sW/2)+'px'; sec.style.top=(cy - sH/2)+'px'; updateLinesFor(sec);
+}
+function ensureEdgeExists(a,b){ if(!findLine(a.dataset.id,b.dataset.id)) createLine(a,b); }
 
-      editingTaskId = null;
-      taskTitle.value = '';
-      taskDesc.value = '';
-      taskStart.value = '';
-      taskEnd.value = '';
+/* URL badge */
+function updateUrlBadge(node){
+  const old=node.querySelector('.url-badge'); if(old) old.remove();
+  const url=node.dataset.url; if(!url) return;
+  const a=document.createElement('a'); a.className='url-badge'; a.href=url; a.target='_blank'; a.rel='noopener noreferrer'; a.title='Ouvrir le lien'; a.textContent='🔗';
+  a.addEventListener('pointerdown',e=>e.stopPropagation()); a.addEventListener('click',e=>e.stopPropagation());
+  node.appendChild(a);
+}
+function setNodeUrl(node,raw){
+  const v=(raw||'').trim();
+  if(!v){ delete node.dataset.url; updateUrlBadge(node); syncOpenUrlIcon(); saveState(); return; }
+  let url=v; if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  try{ new URL(url); }catch{ alert('URL invalide.'); return; }
+  node.dataset.url=url; updateUrlBadge(node); syncOpenUrlIcon(); saveState();
+}
+function syncOpenUrlIcon(){
+  if(!openUrlBtnMenu) return;
+  const url=currentNode?.dataset?.url;
+  if(url){ openUrlBtnMenu.href=url; openUrlBtnMenu.style.opacity='1'; openUrlBtnMenu.style.pointerEvents='auto'; openUrlBtnMenu.title='Ouvrir : '+url; }
+  else{ openUrlBtnMenu.removeAttribute('href'); openUrlBtnMenu.style.opacity='.4'; openUrlBtnMenu.style.pointerEvents='none'; openUrlBtnMenu.title='Aucune URL'; }
+}
 
-      if(taskIdToEdit){
-        const t = (forNode._tasks||[]).find(x=>x.id===taskIdToEdit);
-        if(t){
-          editingTaskId = t.id;
-          taskTitle.value = t.title || '';
-          taskDesc.value = t.desc || '';
-          taskStart.value = t.start || '';
-          taskEnd.value = t.end || '';
-        }
-      }
+/* ====== Tâches ====== */
+function updateTaskBadge(node){
+  const old=node.querySelector('.task-badge'); if(old) old.remove();
+  const tasks=node._tasks||[]; if(tasks.length===0) return;
+  const b=document.createElement('div'); b.className='task-badge'; b.textContent='⭐';
+  b.addEventListener('pointerdown',e=>e.stopPropagation()); b.addEventListener('click',e=>e.stopPropagation());
+  node.appendChild(b);
+}
+function addTaskToNode(node, title, desc, start, end){
+  node._tasks=node._tasks||[];
+  if(node._tasks.length>=10){ alert('Limite de 10 tâches par cercle atteinte.'); return false; }
+  node._tasks.push({ id:'t'+Date.now()+Math.random().toString(36).slice(2,6), title, desc, start, end, done:false });
+  updateTaskBadge(node); saveState(); return true;
+}
+function updateTaskOnNode(node, taskId, patch){
+  if(!node||!node._tasks) return;
+  const t=node._tasks.find(x=>x.id===taskId); if(!t) return;
+  Object.assign(t,patch); updateTaskBadge(node); saveState();
+}
+function deleteTaskFromNode(node, taskId){
+  if(!node||!node._tasks) return;
+  node._tasks=node._tasks.filter(t=>t.id!==taskId);
+  /* retirer ce taskId des objectifs */
+  if(Array.isArray(node._objectives)){
+    node._objectives.forEach(o=>{ o.taskIds = (o.taskIds||[]).filter(id=>id!==taskId); });
+  }
+  updateTaskBadge(node); saveState();
+  if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
+  if(isModalOpen(tasksModal)) renderGlobalTasksList();
+  if(objectiveEditorNode===node && isModalOpen(objectiveEditor)) renderObjectiveEditor();
+}
+
+/* Objectifs */
+function updateObjectiveBadge(node){
+  const old=node.querySelector('.objective-badge'); if(old) old.remove();
+  const objs=node._objectives||[]; if(objs.length===0) return;
+  const b=document.createElement('div'); b.className='objective-badge'; b.textContent='🎯';
+  b.addEventListener('pointerdown',e=>e.stopPropagation()); b.addEventListener('click',e=>e.stopPropagation());
+  node.appendChild(b);
+}
+function ensureObjArrays(node){
+  if(!node._objectives) node._objectives=[];
+  if(!node._tasks) node._tasks=[];
+}
+function addObjectiveToNode(node, {title, desc, due, taskIds}){
+  ensureObjArrays(node);
+  node._objectives.push({ id:'o'+Date.now()+Math.random().toString(36).slice(2,6), title, desc, due, taskIds:[...(taskIds||[])], completed:false, completedAt:null });
+  updateObjectiveBadge(node); saveState();
+}
+function updateObjectiveOnNode(node, objId, patch){
+  ensureObjArrays(node);
+  const o=node._objectives.find(x=>x.id===objId); if(!o) return;
+  const prevCompleted=o.completed;
+  Object.assign(o,patch);
+  recomputeObjectiveCompletion(node, o);
+  if(!prevCompleted && o.completed){ alert(`🎯 Objectif atteint : « ${o.title} »`); }
+  updateObjectiveBadge(node); saveState();
+}
+function deleteObjectiveFromNode(node, objId){
+  ensureObjArrays(node);
+  node._objectives = node._objectives.filter(o=>o.id!==objId);
+  updateObjectiveBadge(node); saveState();
+  if(objectiveEditorNode===node && isModalOpen(objectiveEditor)) renderObjectiveEditor();
+}
+function recomputeObjectiveCompletion(node, objective){
+  const tasks=node._tasks||[];
+  const ids=objective.taskIds||[];
+  if(ids.length===0){
+    // pas de tâches liées -> statut manuel
+    objective.completed = !!objective.completed;
+    return;
+  }
+  const linked=ids.map(id=>tasks.find(t=>t.id===id)).filter(Boolean);
+  const allDone = linked.length>0 && linked.every(t=>t.done===true);
+  if(allDone && !objective.completed){ objective.completed=true; objective.completedAt=new Date().toISOString().slice(0,10); }
+  if(!allDone && objective.completed){ objective.completed=false; objective.completedAt=null; }
+}
+function recomputeAllObjectives(node){
+  if(!node || !node._objectives) return;
+  const prev = node._objectives.map(o=>({id:o.id, completed:o.completed}));
+  node._objectives.forEach(o=>recomputeObjectiveCompletion(node,o));
+  node._objectives.forEach(o=>{
+    const was = prev.find(p=>p.id===o.id)?.completed;
+    if(was===false && o.completed===true){ alert(`🎯 Objectif atteint : « ${o.title} »`); }
+  });
+  updateObjectiveBadge(node); saveState();
+}
+
+/* ====== Task editor (node) ====== */
+function openTaskEditor(forNode, taskIdToEdit=null){
+  if(!forNode) return;
+  setCurrentNode(forNode,{preserveMenu2:true});
+  taskEditorNode=forNode;
+  editingTaskId=null;
+  taskTitle.value=''; taskDesc.value=''; taskStart.value=''; taskEnd.value='';
+  if(taskIdToEdit){
+    const t=(forNode._tasks||[]).find(x=>x.id===taskIdToEdit);
+    if(t){ editingTaskId=t.id; taskTitle.value=t.title||''; taskDesc.value=t.desc||''; taskStart.value=t.start||''; taskEnd.value=t.end||''; }
+  }
+  renderNodeTasksList();
+  taskEditor.style.display='flex'; taskEditor.setAttribute('aria-hidden','false');
+  (taskTitle.value ? taskDesc : taskTitle).focus();
+}
+function closeTaskEditor(){ taskEditor.style.display='none'; taskEditor.setAttribute('aria-hidden','true'); taskEditorNode=null; editingTaskId=null; }
+function renderNodeTasksList(){
+  const node=taskEditorNode; nodeTasksList.innerHTML='';
+  const tasks=(node && node._tasks)?node._tasks:[];
+  if(tasks.length===0){
+    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucune tâche pour ce cercle.'; nodeTasksList.appendChild(empty); return;
+  }
+  tasks.forEach(t=>{
+    const div=document.createElement('div'); div.className='task-item';
+    const checked = t.done ? 'checked' : '';
+    const titleHtml = t.done ? `<del>⭐ ${escapeHtml(t.title)}</del>` : `⭐ ${escapeHtml(t.title)}`;
+    div.innerHTML=`
+      <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
+        <div class="task-main" style="flex:1;">
+          <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+            <input type="checkbox" class="task-done" ${checked}/>
+            <strong>${titleHtml}</strong>
+          </label>
+          ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
+          ${t.desc ? `<div style="margin-top:6px">${escapeHtml(t.desc)}</div>` : ''}
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
+          <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
+        </div>
+      </div>
+    `;
+    div.querySelector('.btn-edit').addEventListener('click',()=>openTaskEditor(node, t.id));
+    div.querySelector('.btn-del').addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id); });
+    div.querySelector('.task-done').addEventListener('change',(e)=>{
+      updateTaskOnNode(node, t.id, {done:e.target.checked});
       renderNodeTasksList();
-      taskEditor.style.display = 'flex';
-      taskEditor.setAttribute('aria-hidden','false');
-      (taskTitle.value ? taskDesc : taskTitle).focus();
-    }
-    function closeTaskEditor(){
-      taskEditor.style.display = 'none';
-      taskEditor.setAttribute('aria-hidden','true');
-      taskEditorNode = null;
-      editingTaskId = null;
-    }
-    function renderNodeTasksList(){
-      const node = taskEditorNode;
-      nodeTasksList.innerHTML = '';
-      const tasks = (node && node._tasks) ? node._tasks : [];
-      if(tasks.length === 0){
-        const empty = document.createElement('div');
-        empty.className = 'task-item';
-        empty.textContent = 'Aucune tâche pour ce cercle.';
-        nodeTasksList.appendChild(empty);
-        return;
-      }
-      tasks.forEach(t=>{
-        const div = document.createElement('div');
-        div.className = 'task-item';
-        div.innerHTML = `
-          <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
-            <div class="task-main" style="flex:1;">
-              <div><strong>⭐ ${escapeHtml(t.title)}</strong></div>
-              ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
-              ${t.desc ? `<div style="margin-top:6px">${escapeHtml(t.desc)}</div>` : ''}
-            </div>
-            <div style="display:flex; gap:6px;">
-              <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
-              <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
-            </div>
-          </div>
-        `;
-        div.querySelector('.btn-edit').addEventListener('click', ()=>{
-          openTaskEditor(node, t.id);
-        });
-        div.querySelector('.btn-del').addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          if(confirm('Supprimer cette tâche ?')) deleteTaskFromNode(node, t.id);
-        });
-        nodeTasksList.appendChild(div);
-      });
-    }
-
-    taskSave.addEventListener('click', ()=>{
-      if(!currentNode) return closeTaskEditor();
-      const t = taskTitle.value.trim();
-      const d = taskDesc.value.trim();
-      const s = taskStart.value || '';
-      const e = taskEnd.value || '';
-      if(!t){ alert('Veuillez saisir un titre.'); return; }
-      if(s && e && s > e){ alert('La date de début doit précéder la date de fin.'); return; } /* pourquoi: garder cohérence */
-      if(editingTaskId){
-        updateTaskOnNode(currentNode, editingTaskId, { title:t, desc:d, start:s, end:e });
-        editingTaskId = null;
-      }else{
-        const ok = addTaskToNode(currentNode, t, d, s, e);
-        if(!ok) return;
-      }
-      renderNodeTasksList();
+      recomputeAllObjectives(node); // pourquoi: mise à jour auto des objectifs
       if(isModalOpen(tasksModal)) renderGlobalTasksList();
-      taskTitle.value = ''; taskDesc.value = ''; taskStart.value=''; taskEnd.value='';
-      taskTitle.focus();
+      if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
     });
-    taskCancel.addEventListener('click', closeTaskEditor);
-    taskEditor.addEventListener('click', (e)=>{ if(e.target===taskEditor) closeTaskEditor(); });
+    nodeTasksList.appendChild(div);
+  });
+}
+taskSave.addEventListener('click',()=>{
+  if(!currentNode) return closeTaskEditor();
+  const t=taskTitle.value.trim(), d=taskDesc.value.trim(), s=taskStart.value||'', e=taskEnd.value||'';
+  if(!t){ alert('Veuillez saisir un titre.'); return; }
+  if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
+  if(editingTaskId){ updateTaskOnNode(currentNode, editingTaskId, {title:t, desc:d, start:s, end:e}); editingTaskId=null; }
+  else{ const ok=addTaskToNode(currentNode, t, d, s, e); if(!ok) return; }
+  renderNodeTasksList(); if(isModalOpen(tasksModal)) renderGlobalTasksList();
+  taskTitle.value=''; taskDesc.value=''; taskStart.value=''; taskEnd.value=''; taskTitle.focus();
+});
+taskCancel.addEventListener('click',closeTaskEditor);
+taskEditor.addEventListener('click',(e)=>{ if(e.target===taskEditor) closeTaskEditor(); });
 
-    // Liste globale des tâches
-    tasksBtn.addEventListener('click', openTasksListModal);
-    tasksClose.addEventListener('click', closeTasksListModal);
-    tasksModal.addEventListener('click', (e)=>{ if(e.target===tasksModal) closeTasksListModal(); });
+/* ====== Global tasks ====== */
+tasksBtn.addEventListener('click', openTasksListModal);
+tasksClose.addEventListener('click', closeTasksListModal);
+tasksModal.addEventListener('click',(e)=>{ if(e.target===tasksModal) closeTasksListModal(); });
+function gatherAllTasks(){
+  const items=[];
+  world.querySelectorAll('.node').forEach(n=>{
+    const tasks=n._tasks||[]; if(tasks.length===0) return;
+    const name=n.querySelector('.label')?.textContent || n.dataset.id;
+    tasks.forEach(task=> items.push({node:n, nodeName:name, task}));
+  });
+  return items;
+}
+function renderGlobalTasksList(){
+  const items=gatherAllTasks(); tasksContainer.innerHTML='';
+  if(items.length===0){ const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucune tâche.'; tasksContainer.appendChild(empty); return; }
+  items.forEach(({node,nodeName,task})=>{
+    const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
+    const wrapper=document.createElement('div'); wrapper.className='task-item';
+    const checked = task.done ? 'checked' : '';
+    const titleHtml = task.done ? `<del>⭐ ${escapeHtml(task.title)}</del>` : `⭐ ${escapeHtml(task.title)}`;
+    wrapper.innerHTML=`
+      <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
+        <div class="task-main" style="flex:1; cursor:pointer">
+          <label style="display:flex;gap:8px;align-items:center;cursor:pointer">
+            <input type="checkbox" class="task-done" ${checked}/>
+            <strong><span class="dot" style="background:${col}"></span>${titleHtml}</strong>
+          </label>
+          <div><small>Sur : ${escapeHtml(nodeName)}</small></div>
+          ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : ''}
+          ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : ''}
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
+          <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
+        </div>
+      </div>
+    `;
+    const main=wrapper.querySelector('.task-main');
+    const delBtn=wrapper.querySelector('.btn-del');
+    const editBtn=wrapper.querySelector('.btn-edit');
+    wrapper.querySelector('.task-done').addEventListener('change',(e)=>{
+      updateTaskOnNode(node, task.id, {done:e.target.checked});
+      renderGlobalTasksList();
+      if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
+      recomputeAllObjectives(node);
+      if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+    });
+    main.addEventListener('click',()=>{ closeTasksListModal(); setCurrentNode(node,{preserveMenu2:true}); centerOnNode(node); });
+    delBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); if(confirm('Supprimer cette tâche ?')){ deleteTaskFromNode(node, task.id); }});
+    editBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); closeTasksListModal(); openTaskEditor(node, task.id); });
+    tasksContainer.appendChild(wrapper);
+  });
+}
+function openTasksListModal(){ populateTaskGlobalNodeSelect(); renderGlobalTasksList(); tasksModal.style.display='flex'; tasksModal.setAttribute('aria-hidden','false'); if(!taskGlobalTitle.value) taskGlobalTitle.focus(); }
+function closeTasksListModal(){ tasksModal.style.display='none'; tasksModal.setAttribute('aria-hidden','true'); }
+function populateTaskGlobalNodeSelect(){
+  const options=[]; world.querySelectorAll('.node').forEach(n=>{ const id=n.dataset.id; const name=n.querySelector('.label')?.textContent?.trim() || id; options.push({id,name}); });
+  taskGlobalNodeSelect.innerHTML=''; options.forEach(({id,name})=>{ const opt=document.createElement('option'); opt.value=id; opt.textContent=name; taskGlobalNodeSelect.appendChild(opt); });
+  if(currentNode){ taskGlobalNodeSelect.value=currentNode.dataset.id; }
+}
+function clearGlobalTaskForm(){
+  taskGlobalTitle.value=''; taskGlobalDesc.value=''; taskGlobalStart.value=''; taskGlobalEnd.value='';
+  if(currentNode) taskGlobalNodeSelect.value=currentNode.dataset.id;
+  taskGlobalTitle.focus();
+}
+taskGlobalSave.addEventListener('click',()=>{
+  const nodeId=taskGlobalNodeSelect.value;
+  const node=world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`);
+  if(!node){ alert('Veuillez choisir un cercle.'); return; }
+  const t=taskGlobalTitle.value.trim(); if(!t){ alert('Veuillez saisir un titre.'); return; }
+  const s=taskGlobalStart.value||'', e=taskGlobalEnd.value||'';
+  if(s && e && s>e){ alert('La date de début doit précéder la date de fin.'); return; }
+  const ok=addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e); if(!ok) return;
+  renderGlobalTasksList(); clearGlobalTaskForm();
+});
+taskGlobalReset.addEventListener('click', clearGlobalTaskForm);
 
-    function gatherAllTasks(){
-      const items = [];
-      world.querySelectorAll('.node').forEach(n=>{
-        const tasks = n._tasks || [];
-        if(tasks.length===0) return;
-        const name = n.querySelector('.label')?.textContent || n.dataset.id;
-        tasks.forEach(task=> items.push({ node:n, nodeName:name, task }));
-      });
-      return items;
-    }
-    function renderGlobalTasksList(){
-      const items = gatherAllTasks();
-      tasksContainer.innerHTML = '';
-      if(items.length === 0){
-        const empty = document.createElement('div');
-        empty.className='task-item';
-        empty.textContent = 'Aucune tâche.';
-        tasksContainer.appendChild(empty);
-        return;
-      }
-      items.forEach(({node,nodeName,task})=>{
-        const col = toHex(getComputedStyle(node).backgroundColor) || '#00EAFF';
-        const wrapper = document.createElement('div');
-        wrapper.className = 'task-item';
-        wrapper.innerHTML = `
-          <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
-            <div class="task-main" style="flex:1; cursor:pointer">
-              <div><strong><span class="dot" style="background:${col}"></span>⭐ ${escapeHtml(task.title)}</strong></div>
-              <div><small>Sur : ${escapeHtml(nodeName)}</small></div>
-              ${task.start || task.end ? `<div><small>${escapeHtml(fmtRange(task.start,task.end))}</small></div>` : ''}
-              ${task.desc ? `<div style="margin-top:6px">${escapeHtml(task.desc)}</div>` : ''}
-            </div>
-            <div style="display:flex; gap:6px;">
-              <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
-              <button class="icon-btn small btn-del"  title="Supprimer">🗑️</button>
-            </div>
+/* ====== Objectif Editor ====== */
+function openObjectiveEditor(forNode, objectiveIdToEdit=null){
+  if(!forNode) return;
+  setCurrentNode(forNode,{preserveMenu2:true});
+  objectiveEditorNode=forNode;
+  editingObjectiveId=null;
+  objTitle.value=''; objDesc.value=''; objDue.value='';
+  if(objectiveIdToEdit){
+    const o=(forNode._objectives||[]).find(x=>x.id===objectiveIdToEdit);
+    if(o){ editingObjectiveId=o.id; objTitle.value=o.title||''; objDesc.value=o.desc||''; objDue.value=o.due||''; }
+  }
+  renderObjTasksChecklist();
+  renderObjectiveEditor();
+  objectiveEditor.style.display='flex'; objectiveEditor.setAttribute('aria-hidden','false');
+  (objTitle.value ? objDesc : objTitle).focus();
+}
+function closeObjectiveEditor(){ objectiveEditor.style.display='none'; objectiveEditor.setAttribute('aria-hidden','true'); objectiveEditorNode=null; editingObjectiveId=null; }
+objCancel.addEventListener('click', closeObjectiveEditor);
+objectiveEditor.addEventListener('click',(e)=>{ if(e.target===objectiveEditor) closeObjectiveEditor(); });
+
+function renderObjTasksChecklist(){
+  const node=objectiveEditorNode; objTasksChecklist.innerHTML='';
+  const tasks=(node && node._tasks)?node._tasks:[];
+
+  // selected set for edit mode
+  const selected = new Set();
+  if(editingObjectiveId && node && node._objectives){
+    const o=node._objectives.find(x=>x.id===editingObjectiveId);
+    if(o) (o.taskIds||[]).forEach(id=>selected.add(id));
+  }
+
+  if(tasks.length===0){ objTasksChecklist.textContent='Aucune tâche sur ce cercle.'; return; }
+  tasks.forEach(t=>{
+    const id='chk_'+t.id;
+    const row=document.createElement('label');
+    row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.cursor='pointer';
+    row.innerHTML=`<input type="checkbox" id="${id}" data-taskid="${t.id}" ${selected.has(t.id)?'checked':''}/> ${escapeHtml(t.title)} ${t.done?'<small>(terminée)</small>':''}`;
+    objTasksChecklist.appendChild(row);
+  });
+}
+
+function computeProgress(node,o){
+  const tasks=node._tasks||[]; const ids=o.taskIds||[];
+  if(ids.length===0) return {done:o.completed?1:0, total:1, ratio:o.completed?1:0}; // manuel
+  const linked=ids.map(id=>tasks.find(t=>t.id===id)).filter(Boolean);
+  const total=linked.length; const done=linked.filter(t=>t.done).length;
+  return {done,total,ratio: total? done/total : 0};
+}
+
+function renderObjectiveEditor(){
+  const node=objectiveEditorNode; objectivesList.innerHTML='';
+  ensureObjArrays(node);
+  if(node._objectives.length===0){
+    const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucun objectif.'; objectivesList.appendChild(empty); return;
+  }
+  node._objectives.forEach(o=>{
+    const {done,total,ratio}=computeProgress(node,o);
+    const status = o.completed ? `✅ Terminé${o.completedAt?` le ${o.completedAt}`:''}` : (total>0 ? `${done}/${total} terminé(s)` : (o.completed?'✅ Terminé':'⏳ En cours'));
+    const wrap=document.createElement('div'); wrap.className='task-item';
+    wrap.innerHTML=`
+      <div style="display:flex; gap:10px; justify-content:space-between; align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <strong>🎯 ${escapeHtml(o.title||'Objectif')}</strong>
+            ${o.due?`<small>(échéance: ${escapeHtml(o.due)})</small>`:''}
           </div>
-        `;
-        const main = wrapper.querySelector('.task-main');
-        const delBtn = wrapper.querySelector('.btn-del');
-        const editBtn = wrapper.querySelector('.btn-edit');
-
-        main.addEventListener('click', ()=>{
-          closeTasksListModal();
-          setCurrentNode(node,{preserveMenu2:true});
-          centerOnNode(node);
-        });
-        delBtn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          if(confirm('Supprimer cette tâche ?')){
-            deleteTaskFromNode(node, task.id);
-          }
-        });
-        editBtn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          closeTasksListModal();
-          openTaskEditor(node, task.id);
-        });
-
-        tasksContainer.appendChild(wrapper);
-      });
-    }
-    function openTasksListModal(){
-      populateTaskGlobalNodeSelect();
-      renderGlobalTasksList();
-      tasksModal.style.display='flex';
-      tasksModal.setAttribute('aria-hidden','false');
-      if(!taskGlobalTitle.value) taskGlobalTitle.focus();
-    }
-    function closeTasksListModal(){ tasksModal.style.display='none'; tasksModal.setAttribute('aria-hidden','true'); }
-
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-
-    /* ⬇️ Nouveau : helpers formulaire global */
-    function populateTaskGlobalNodeSelect(){
-      const options = [];
-      world.querySelectorAll('.node').forEach(n=>{
-        const id = n.dataset.id;
-        const name = n.querySelector('.label')?.textContent?.trim() || id;
-        options.push({ id, name });
-      });
-      taskGlobalNodeSelect.innerHTML = '';
-      options.forEach(({id,name})=>{
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = name;
-        taskGlobalNodeSelect.appendChild(opt);
-      });
-      if(currentNode){
-        taskGlobalNodeSelect.value = currentNode.dataset.id;
-      }
-    }
-    function clearGlobalTaskForm(){
-      taskGlobalTitle.value = '';
-      taskGlobalDesc.value = '';
-      taskGlobalStart.value = '';
-      taskGlobalEnd.value = '';
-      if(currentNode){
-        taskGlobalNodeSelect.value = currentNode.dataset.id;
-      }
-      taskGlobalTitle.focus();
-    }
-    taskGlobalSave.addEventListener('click', ()=>{
-      const nodeId = taskGlobalNodeSelect.value;
-      const node = world.querySelector(`[data-id="${CSS.escape(nodeId)}"]`);
-      if(!node){ alert('Veuillez choisir un cercle.'); return; }
-      const t = taskGlobalTitle.value.trim();
-      if(!t){ alert('Veuillez saisir un titre.'); return; }
-      const s = taskGlobalStart.value || '';
-      const e = taskGlobalEnd.value || '';
-      if(s && e && s > e){ alert('La date de début doit précéder la date de fin.'); return; } /* pourquoi: cohérence */
-      const ok = addTaskToNode(node, t, taskGlobalDesc.value.trim(), s, e);
-      if(!ok) return; /* pourquoi: limite par cercle */
-      renderGlobalTasksList();
-      clearGlobalTaskForm();
+          ${o.desc?`<div style="margin-top:6px">${escapeHtml(o.desc)}</div>`:''}
+          <div class="progress" style="margin-top:8px"><div style="width:${Math.round((o.completed?1:ratio)*100)}%"></div></div>
+          <div><small>${escapeHtml(status)}</small></div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="icon-btn small btn-toggle" title="${o.completed?'Marquer en cours':'Marquer terminé'}">${o.completed?'↩️':'✅'}</button>
+          <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
+          <button class="icon-btn small btn-del" title="Supprimer">🗑️</button>
+        </div>
+      </div>
+    `;
+    wrap.querySelector('.btn-edit').addEventListener('click',()=>{
+      openObjectiveEditor(node, o.id);
     });
-    taskGlobalReset.addEventListener('click', clearGlobalTaskForm);
-
-    function enableDrag(node){
-      if(node._dragEnabled) return;
-      let offsetXw=0, offsetYw=0, dragging=false, prevLeft=0, prevTop=0;
-
-      node.addEventListener('pointerdown',(e)=>{
-        if(e.button!==0) return;
-        if(wiring.active){
-          e.preventDefault(); e.stopPropagation();
-          if(!wiring.source){
-            setCurrentNode(node,{preserveMenu2:true});
-            startWiring(node);
-          }else{
-            attemptConnect(node);
-          }
-          return;
-        }
-        setCurrentNode(node,{preserveMenu2:true});
-        closeMenu(menu); closeMenu(menuHeart);
-        node.setPointerCapture(e.pointerId);
-        const rect=node.getBoundingClientRect();
-        offsetXw = (e.clientX - rect.left) / camera.z;
-        offsetYw = (e.clientY - rect.top)  / camera.z;
-        prevLeft = parseFloat(node.style.left)||0;
-        prevTop  = parseFloat(node.style.top)||0;
-        dragging=true;
-      });
-
-      node.addEventListener('pointermove',(ev)=>{
-        if(!dragging) return;
-        const sr=stageRect();
-        const worldX = (ev.clientX - sr.left - camera.x)/camera.z;
-        const worldY = (ev.clientY - sr.top  - camera.y)/camera.z;
-        const newLeft = worldX - offsetXw;
-        const newTop  = worldY - offsetYw;
-
-        const dx = newLeft - prevLeft;
-        const dy = newTop  - prevTop;
-
-        node.style.left=newLeft+'px';
-        node.style.top =newTop +'px';
-        updateLinesFor(node);
-        fitLabelToNode(node);
-
-        if(isPrincipalNode(node) && (dx!==0 || dy!==0)){
-          secondariesUniqueToPrincipal(node).forEach(sec=>{
-            sec.style.left = ((parseFloat(sec.style.left)||0) + dx) + 'px';
-            sec.style.top  = ((parseFloat(sec.style.top)||0) + dy) + 'px';
-            updateLinesFor(sec);
-          });
-        }
-
-        if(isSecondaryNode(node)){
-          const {node:pri, dist} = nearestPrincipal(node);
-          if(snapHint && snapHint!==pri) snapHint.classList.remove('snap-target');
-          if(pri && dist <= SNAP_RANGE){ pri.classList.add('snap-target'); snapHint=pri; } else { if(snapHint){ snapHint.classList.remove('snap-target'); snapHint=null; } }
-        }
-
-        prevLeft = newLeft;
-        prevTop  = newTop;
-      });
-
-      node.addEventListener('pointerup',(e)=>{
-        if(!dragging) return;
-        dragging=false; node.releasePointerCapture(e.pointerId);
-        if(isSecondaryNode(node)){
-          const {node:pri, dist} = nearestPrincipal(node);
-          if(pri && dist <= SNAP_RANGE){
-            snapSecondaryToPrincipal(node, pri);
-            ensureEdgeExists(pri, node);
-          }
-          if(snapHint){ snapHint.classList.remove('snap-target'); snapHint=null; }
+    wrap.querySelector('.btn-del').addEventListener('click',()=>{
+      if(confirm('Supprimer cet objectif ?')) deleteObjectiveFromNode(node, o.id);
+    });
+    wrap.querySelector('.btn-toggle').addEventListener('click',()=>{
+      // si objectif basé sur tâches, on force l’état manuel seulement si pas de tâches
+      if((o.taskIds||[]).length>0){
+        // toggle rapide: si toutes tâches pas faites -> marquer toutes faites; sinon remettre en cours
+        const tasks = node._tasks || [];
+        const linked = o.taskIds.map(id=>tasks.find(t=>t.id===id)).filter(Boolean);
+        const allDone = linked.length>0 && linked.every(t=>t.done);
+        if(allDone){
+          linked.forEach(t=> t.done=false);
+        }else{
+          linked.forEach(t=> t.done=true);
         }
         saveState();
-      });
-
-      node.addEventListener('contextmenu',(e)=>{
-        e.preventDefault();
-        setCurrentNode(node,{preserveMenu2:true});
-        if(node.id === 'main-node') openMenuAt(menuHeart, e, node);
-        else openMenuAt(menu, e, node);
-      });
-
-      node._dragEnabled=true;
-      updateUrlBadge(node);
-      updateTaskBadge(node);
-    }
-
-    /* Ajout cercles */
-    function addNodeNear(target){
-      const sr=stageRect();
-      const tRect=target.getBoundingClientRect();
-      const tW=target.offsetWidth, tH=target.offsetHeight;
-      const left = ((tRect.left - sr.left - camera.x)/camera.z) + tW + 30;
-      const top  = ((tRect.top  - sr.top  - camera.y)/camera.z) + tH + 30;
-      const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
-      const base = toHex(getComputedStyle(target).backgroundColor) || '#00EAFF';
-      Object.assign(node.style,{left:left+'px',top:top+'px',width:BIG_SIZE+'px',height:BIG_SIZE+'px',backgroundColor: base});
-      node.style.setProperty('--node', base);
-      node.innerHTML='<span class="label">Cercle principal</span>';
-      node._tasks = [];
-      world.appendChild(node); enableDrag(node); fitLabelToNode(node); createLine(target,node); setCurrentNode(node,{preserveMenu2:true}); saveState(); return node;
-    }
-    function addNodeNearScaled(target){
-      const sr=stageRect();
-      const tRect=target.getBoundingClientRect();
-      const tW=target.offsetWidth, tH=target.offsetHeight;
-      const left = ((tRect.left - sr.left - camera.x)/camera.z) + tW + 30;
-      const top  = ((tRect.top  - sr.top  - camera.y)/camera.z) + tH + 30;
-      const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
-      const base = toHex(getComputedStyle(target).backgroundColor) || '#00EAFF';
-      Object.assign(node.style,{left:left+'px',top:top+'px',width:SMALL_SIZE+'px',height:SMALL_SIZE+'px',backgroundColor: base});
-      node.style.setProperty('--node', base);
-      node.innerHTML='<span class="label">Cercle secondaire</span>';
-      node._tasks = [];
-      world.appendChild(node); enableDrag(node); fitLabelToNode(node); createLine(target,node); setCurrentNode(node,{preserveMenu2:true}); saveState(); return node;
-    }
-
-    /* Menus contextuels (3 et 4) */
-    function openMenuAt(whichMenu, event, node){
-      if(!event){ whichMenu.style.display='none'; whichMenu.setAttribute('aria-hidden','true'); return; }
-      setCurrentNode(node,{preserveMenu2:true});
-      const hex=toHex(getComputedStyle(currentNode).backgroundColor)||'#00EAFF';
-      (whichMenu.querySelector('input[type="color"]')||{}).value = hex;
-      const lbl=currentNode.querySelector('.label');
-      whichMenu.querySelectorAll('select').forEach(sel=>{
-        const fam = lbl.style.fontFamily && Array.from(sel.options).some(o=>o.value===lbl.style.fontFamily)? lbl.style.fontFamily : 'system-ui';
-        sel.value=fam;
-      });
-      const sizeInput = whichMenu.querySelector('input[type="number"]'); if(sizeInput) sizeInput.value = currentNode.dataset.maxFont || '32';
-      const cs=getComputedStyle(lbl); const fw=parseInt(cs.fontWeight,10); const isBold=(fw>=600)||cs.fontWeight==='bold'; const isIt=cs.fontStyle==='italic'; const isUl=(cs.textDecorationLine||cs.textDecoration||'').includes('underline');
-      const setPressed=(id,on)=>{ const el=whichMenu.querySelector(id); if(el) el.setAttribute('aria-pressed', on?'true':'false'); };
-      setPressed('#boldBtn', isBold); setPressed('#italicBtn', isIt); setPressed('#underlineBtn', isUl);
-      setPressed('#boldBtnH', isBold); setPressed('#italicBtnH', isIt); setPressed('#underlineBtnH', isUl);
-      if(whichMenu===menu){ titleInput3.value = lbl.textContent || ''; syncOpenUrlIcon(); }
-      menu.style.display='none'; menuHeart.style.display='none';
-      whichMenu.style.display='flex'; whichMenu.setAttribute('aria-hidden','false');
-      const mRect=whichMenu.getBoundingClientRect(); const vw=innerWidth,vh=innerHeight; const x=Math.min(event.clientX,vw-mRect.width-8); const y=Math.min(event.clientY,vh-mRect.height-8); whichMenu.style.left=x+'px'; whichMenu.style.top=y+'px'; event.stopPropagation();
-    }
-    function closeMenu(whichMenu){ whichMenu.style.display='none'; whichMenu.setAttribute('aria-hidden','true'); }
-    document.addEventListener('click',(e)=>{ if(!menu.contains(e.target)) closeMenu(menu); if(!menuHeart.contains(e.target)) closeMenu(menuHeart); });
-    openUrlBtnMenu.addEventListener('pointerdown',e=>e.stopPropagation());
-    openUrlBtnMenu.addEventListener('click',e=>{ e.stopPropagation(); });
-
-    function applyColor(hex){
-      if(!currentNode) return; const v=normalizeHex(hex); if(!v) return;
-      currentNode.style.backgroundColor=v;
-      currentNode.style.setProperty('--node', v);
-      [colorPicker,colorPicker2,colorPickerH].forEach(el=>{ if(el) el.value=v; });
-      saveState(); refreshSidebar();
-    }
-    function setFamily(val){ if(!currentNode) return; const l=currentNode.querySelector('.label'); l.style.fontFamily=val; [fontSelect,fontSelect2,fontSelectH].forEach(el=>{ if(el) el.value=val; }); fitLabelToNode(currentNode); saveState(); }
-    function setMax(v){ if(!currentNode) return; const min=6,max=72,val=Math.max(min,Math.min(max,parseFloat(v)||min)); currentNode.dataset.maxFont=String(val); [fontSizeMax,fontSizeMax2,fontSizeMaxH].forEach(el=>{ if(el) el.value=val; }); fitLabelToNode(currentNode); saveState(); }
-    function togglePressed(btn){ const newV = btn.getAttribute('aria-pressed')==='true'?'false':'true'; btn.setAttribute('aria-pressed',newV); return newV==='true'; }
-
-    // Menu 3 handlers
-    titleInput3.addEventListener('change', ()=>{ if(!currentNode) return; const l=currentNode.querySelector('.label'); l.textContent=titleInput3.value.trim(); fitLabelToNode(currentNode); saveState(); refreshSidebar(); });
-    titleInput3.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); titleInput3.blur(); }});
-    menu.addEventListener('click',(e)=>{
-      const btn=e.target.closest('button'); if(!btn||!currentNode) return;
-      const action=btn.dataset.action;
-      if(action==='add'){ addNodeNear(currentNode); closeMenu(menu); return; }
-      if(action==='addSmall'){ addNodeNearScaled(currentNode); closeMenu(menu); return; }
-      if(action==='setUrl'){
-        const curr=currentNode.dataset.url||'';
-        const val=prompt("Entrez une URL (laisser vide pour supprimer) :", curr);
-        if(val===null) return;
-        setNodeUrl(currentNode, val);
-        return;
+        renderNodeTasksList();
+        renderGlobalTasksList();
+      }else{
+        updateObjectiveOnNode(node, o.id, { completed: !o.completed });
       }
+      recomputeAllObjectives(node);
+      renderObjectiveEditor();
     });
-    colorPicker.addEventListener('input',(e)=> applyColor(e.target.value));
-    fontSelect.addEventListener('change',(e)=> setFamily(e.target.value));
-    fontSizeMax.addEventListener('input',(e)=> setMax(e.target.value));
-    boldBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtn); currentNode.querySelector('.label').style.fontWeight = on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
-    italicBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtn); currentNode.querySelector('.label').style.fontStyle = on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
-    underlineBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtn); currentNode.querySelector('.label').style.textDecoration = on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
+    objectivesList.appendChild(wrap);
+  });
+}
 
-    iconWireBtn.addEventListener('click',()=>{ if(!currentNode) return; startWiring(currentNode); closeMenu(menu); });
-    iconCenterBtn.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menu); });
-    iconDeleteBtn.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menu); });
-    iconTaskBtn.addEventListener('click',()=>{ if(!currentNode) return; openTaskEditor(currentNode); closeMenu(menu); });
+objSave.addEventListener('click',()=>{
+  if(!objectiveEditorNode) return closeObjectiveEditor();
+  const title=objTitle.value.trim(); if(!title){ alert('Veuillez saisir un titre d’objectif.'); return; }
+  const desc=objDesc.value.trim(); const due=objDue.value||'';
+  const taskIds=Array.from(objTasksChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(i=>i.dataset.taskid);
 
-    // Menu 4 (cœur)
-    menuHeart.addEventListener('click',(e)=>{
-      const btn=e.target.closest('button'); if(!btn||!currentNode) return;
-      const action=btn.dataset.action;
-      if(action==='add'){ addNodeNear(currentNode); closeMenu(menuHeart); return; }
-      if(action==='addSmall'){ addNodeNearScaled(currentNode); closeMenu(menuHeart); return; }
-      if(action==='wire'){ startWiring(currentNode); closeMenu(menuHeart); return; }
-      if(action==='rename'){ const label=currentNode.querySelector('.label'); const name=prompt('Entrez un nouveau nom :', label.textContent.trim()); if(name){ label.textContent=name; fitLabelToNode(currentNode); saveState(); refreshSidebar(); } closeMenu(menuHeart); return; }
-    });
-    colorPickerH.addEventListener('input',(e)=> applyColor(e.target.value));
-    fontSelectH.addEventListener('change',(e)=> setFamily(e.target.value));
-    fontSizeMaxH.addEventListener('input',(e)=> setMax(e.target.value));
-    boldBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtnH); currentNode.querySelector('.label').style.fontWeight = on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
-    italicBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtnH); currentNode.querySelector('.label').style.fontStyle = on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
-    underlineBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtnH); currentNode.querySelector('.label').style.textDecoration = on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
-    iconColorBtnH.addEventListener('click',()=>{ colorPickerH.focus(); colorPickerH.click(); });
-    iconCenterBtnH.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menuHeart); });
-    iconDeleteBtnH.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menuHeart); });
+  if(editingObjectiveId){
+    updateObjectiveOnNode(objectiveEditorNode, editingObjectiveId, {title, desc, due, taskIds});
+    editingObjectiveId=null;
+  }else{
+    addObjectiveToNode(objectiveEditorNode, {title, desc, due, taskIds});
+  }
+  recomputeAllObjectives(objectiveEditorNode);
+  renderObjectiveEditor();
+  objTitle.value=''; objDesc.value=''; objDue.value=''; renderObjTasksChecklist();
+  updateObjectiveBadge(objectiveEditorNode);
+});
 
-    /* Menu 1 */
-    function stylePrincipalButtonFromNode(btn, node){
-      const col = toHex(getComputedStyle(node).backgroundColor) || '#00EAFF';
-      btn.style.borderTop = '4px solid ' + col;
-      btn.style.color = 'var(--text)';
+/* ====== Menu events ====== */
+function openMenuAt(whichMenu, event, node){
+  if(!event){ whichMenu.style.display='none'; whichMenu.setAttribute('aria-hidden','true'); return; }
+  setCurrentNode(node,{preserveMenu2:true});
+  const hex=toHex(getComputedStyle(currentNode).backgroundColor)||'#00EAFF';
+  (whichMenu.querySelector('input[type="color"]')||{}).value=hex;
+  const lbl=currentNode.querySelector('.label');
+  whichMenu.querySelectorAll('select').forEach(sel=>{
+    const fam=lbl.style.fontFamily && Array.from(sel.options).some(o=>o.value===lbl.style.fontFamily)? lbl.style.fontFamily : 'system-ui';
+    sel.value=fam;
+  });
+  const sizeInput=whichMenu.querySelector('input[type="number"]'); if(sizeInput) sizeInput.value=currentNode.dataset.maxFont||'32';
+  const cs=getComputedStyle(lbl); const fw=parseInt(cs.fontWeight,10);
+  const isBold=(fw>=600)||cs.fontWeight==='bold'; const isIt=cs.fontStyle==='italic'; const isUl=(cs.textDecorationLine||cs.textDecoration||'').includes('underline');
+  const setPressed=(id,on)=>{ const el=whichMenu.querySelector(id); if(el) el.setAttribute('aria-pressed', on?'true':'false'); };
+  setPressed('#boldBtn',isBold); setPressed('#italicBtn',isIt); setPressed('#underlineBtn',isUl);
+  setPressed('#boldBtnH',isBold); setPressed('#italicBtnH',isIt); setPressed('#underlineBtnH',isUl);
+  if(whichMenu===menu){ titleInput3.value=lbl.textContent||''; syncOpenUrlIcon(); }
+  menu.style.display='none'; menuHeart.style.display='none';
+  whichMenu.style.display='flex'; whichMenu.setAttribute('aria-hidden','false');
+  const mRect=whichMenu.getBoundingClientRect(); const vw=innerWidth,vh=innerHeight;
+  const x=Math.min(event.clientX,vw-mRect.width-8); const y=Math.min(event.clientY,vh-mRect.height-8);
+  whichMenu.style.left=x+'px'; whichMenu.style.top=y+'px'; event.stopPropagation();
+}
+function closeMenu(whichMenu){ whichMenu.style.display='none'; whichMenu.setAttribute('aria-hidden','true'); }
+document.addEventListener('click',(e)=>{ if(!menu.contains(e.target)) closeMenu(menu); if(!menuHeart.contains(e.target)) closeMenu(menuHeart); });
+openUrlBtnMenu.addEventListener('pointerdown',e=>e.stopPropagation());
+openUrlBtnMenu.addEventListener('click',e=>{ e.stopPropagation(); });
+
+function applyColor(hex){
+  if(!currentNode) return; const v=normalizeHex(hex); if(!v) return;
+  currentNode.style.backgroundColor=v; currentNode.style.setProperty('--node', v);
+  [colorPicker,colorPicker2,colorPickerH].forEach(el=>{ if(el) el.value=v; });
+  saveState(); refreshSidebar();
+}
+function setFamily(val){ if(!currentNode) return; const l=currentNode.querySelector('.label'); l.style.fontFamily=val; [fontSelect,fontSelect2,fontSelectH].forEach(el=>{ if(el) el.value=val; }); fitLabelToNode(currentNode); saveState(); }
+function setMax(v){ if(!currentNode) return; const min=6,max=72,val=Math.max(min,Math.min(max,parseFloat(v)||min)); currentNode.dataset.maxFont=String(val); [fontSizeMax,fontSizeMax2,fontSizeMaxH].forEach(el=>{ if(el) el.value=val; }); fitLabelToNode(currentNode); saveState(); }
+function togglePressed(btn){ const newV=btn.getAttribute('aria-pressed')==='true'?'false':'true'; btn.setAttribute('aria-pressed',newV); return newV==='true'; }
+
+/* Menu 3 handlers */
+titleInput3.addEventListener('change',()=>{ if(!currentNode) return; const l=currentNode.querySelector('.label'); l.textContent=titleInput3.value.trim(); fitLabelToNode(currentNode); saveState(); refreshSidebar(); });
+titleInput3.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); titleInput3.blur(); }});
+menu.addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn||!currentNode) return;
+  const action=btn.dataset.action;
+  if(action==='add'){ addNodeNear(currentNode); closeMenu(menu); return; }
+  if(action==='addSmall'){ addNodeNearScaled(currentNode); closeMenu(menu); return; }
+  if(action==='setUrl'){
+    const curr=currentNode.dataset.url||'';
+    const val=prompt("Entrez une URL (laisser vide pour supprimer) :", curr);
+    if(val===null) return; setNodeUrl(currentNode, val); return;
+  }
+});
+colorPicker.addEventListener('input',(e)=>applyColor(e.target.value));
+fontSelect.addEventListener('change',(e)=>setFamily(e.target.value));
+fontSizeMax.addEventListener('input',(e)=>setMax(e.target.value));
+boldBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtn); currentNode.querySelector('.label').style.fontWeight=on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
+italicBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtn); currentNode.querySelector('.label').style.fontStyle=on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
+underlineBtn.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtn); currentNode.querySelector('.label').style.textDecoration=on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
+
+iconWireBtn.addEventListener('click',()=>{ if(!currentNode) return; startWiring(currentNode); closeMenu(menu); });
+iconCenterBtn.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menu); });
+iconDeleteBtn.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menu); });
+iconTaskBtn.addEventListener('click',()=>{ if(!currentNode) return; openTaskEditor(currentNode); closeMenu(menu); });
+iconObjectiveBtn.addEventListener('click',()=>{ if(!currentNode) return; openObjectiveEditor(currentNode); closeMenu(menu); });
+
+/* Menu 4 */
+menuHeart.addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn||!currentNode) return;
+  const action=btn.dataset.action;
+  if(action==='add'){ addNodeNear(currentNode); closeMenu(menuHeart); return; }
+  if(action==='addSmall'){ addNodeNearScaled(currentNode); closeMenu(menuHeart); return; }
+  if(action==='wire'){ startWiring(currentNode); closeMenu(menuHeart); return; }
+  if(action==='rename'){ const label=currentNode.querySelector('.label'); const name=prompt('Entrez un nouveau nom :', label.textContent.trim()); if(name){ label.textContent=name; fitLabelToNode(currentNode); saveState(); refreshSidebar(); } closeMenu(menuHeart); return; }
+});
+colorPickerH.addEventListener('input',(e)=>applyColor(e.target.value));
+fontSelectH.addEventListener('change',(e)=>setFamily(e.target.value));
+fontSizeMaxH.addEventListener('input',(e)=>setMax(e.target.value));
+boldBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtnH); currentNode.querySelector('.label').style.fontWeight=on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
+italicBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtnH); currentNode.querySelector('.label').style.fontStyle=on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
+underlineBtnH.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtnH); currentNode.querySelector('.label').style.textDecoration=on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
+iconColorBtnH.addEventListener('click',()=>{ colorPickerH.focus(); colorPickerH.click(); });
+iconCenterBtnH.addEventListener('click',()=>{ centerOnCurrent(); closeMenu(menuHeart); });
+iconDeleteBtnH.addEventListener('click',()=>{ if(!currentNode) return; if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; } qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); }); currentNode.remove(); saveState(); refreshSidebar(); closeMenu(menuHeart); });
+
+/* Sidebar */
+function stylePrincipalButtonFromNode(btn,node){
+  const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
+  btn.style.borderTop='4px solid '+col; btn.style.color='var(--text)';
+}
+function populateChildren(principalId,ul){
+  ul.innerHTML='';
+  const seconds=neighborsOf(principalId).map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isSecondaryNode);
+  if(seconds.length===0){
+    const li=document.createElement('li'); li.textContent='Aucun cercle secondaire'; li.style.color='var(--muted)'; li.style.borderStyle='dashed'; ul.appendChild(li); return;
+  }
+  seconds.forEach(n=>{
+    const li=document.createElement('li');
+    li.textContent=n.querySelector('.label')?.textContent||n.dataset.id;
+    li.addEventListener('click',()=>{ setCurrentNode(n,{fromMenu1:true}); n.classList.add('pulse'); setTimeout(()=>n.classList.remove('pulse'),800); });
+    ul.appendChild(li);
+  });
+}
+function refreshSidebar(){
+  principalList.innerHTML='';
+  const principals=Array.from(world.querySelectorAll('.node')).filter(isPrincipalNode);
+  principals.forEach(n=>{
+    const wrap=document.createElement('div');
+    const btn=document.createElement('button'); btn.className='side-item'; btn.type='button';
+    btn.textContent=n.querySelector('.label')?.textContent||n.dataset.id;
+    stylePrincipalButtonFromNode(btn,n);
+    const ul=document.createElement('ul'); ul.className='child-list'; ul.style.display='none';
+    btn.addEventListener('click',()=>{ setCurrentNode(n,{fromMenu1:true}); if(ul.style.display==='none'){ populateChildren(n.dataset.id,ul); ul.style.display='block'; } else { ul.style.display='none'; } });
+    wrap.appendChild(btn); wrap.appendChild(ul); principalList.appendChild(wrap);
+  });
+}
+
+/* Panel 2 */
+actAddPrincipal.addEventListener('click',()=>{ if(!currentNode) return; addNodeNear(currentNode); });
+actAddSecondary.addEventListener('click',()=>{ if(!currentNode) return; addNodeNearScaled(currentNode); });
+actWire.addEventListener('click',()=>{ if(!currentNode) return; startWiring(currentNode); });
+actCenter.addEventListener('click',()=>centerOnCurrent());
+actDelete.addEventListener('click',()=>{
+  if(!currentNode) return;
+  if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; }
+  qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); });
+  currentNode.remove(); currentNode=null; enableActionPanel(false); saveState(); showActionsPanel(false); menu2Locked=false; refreshSidebar();
+});
+function applyTitleFromInput(){
+  if(!currentNode) return;
+  const v=(titleInput2.value||'').trim();
+  const label=currentNode.querySelector('.label'); label.textContent=v; fitLabelToNode(currentNode); saveState();
+  selectedInfo.textContent=v || currentNode.dataset.id; refreshSidebar();
+}
+titleInput2.addEventListener('change', applyTitleFromInput);
+titleInput2.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); applyTitleFromInput(); titleInput2.blur(); }});
+colorPicker2.addEventListener('input',(e)=>applyColor(e.target.value));
+fontSelect2.addEventListener('change',(e)=>setFamily(e.target.value));
+fontSizeMax2.addEventListener('input',(e)=>setMax(e.target.value));
+boldBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtn2); currentNode.querySelector('.label').style.fontWeight=on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
+italicBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtn2); currentNode.querySelector('.label').style.fontStyle=on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
+underlineBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtn2); currentNode.querySelector('.label').style.textDecoration=on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
+
+/* Export/Import/Reset */
+exportBtn.addEventListener('click',()=>{
+  const data=buildState(); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='workspace.json'; a.click(); URL.revokeObjectURL(url);
+});
+importBtn.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change', async (e)=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  try{ const text=await f.text(); restoreState(JSON.parse(text)); } catch{ alert('Fichier invalide.'); } finally { fileInput.value=''; }
+});
+resetBtn.addEventListener('click',()=>{
+  if(!confirm("Réinitialiser l'espace de travail ?")) return;
+  localStorage.removeItem('workspaceState'); localStorage.removeItem('sphaira:workspaceState:v1');
+  qLines().forEach(l=>l.remove());
+  world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); });
+  mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)';
+  mainNode.querySelector('.label').textContent='Cercle principal';
+  mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)');
+  idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera();
+  mainNode._tasks=[]; mainNode._objectives=[];
+  saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar();
+});
+
+/* Pan */
+(function setupStagePan(){
+  let panActive=false,lastX=0,lastY=0;
+  stage.addEventListener('pointerdown',(e)=>{
+    if(e.button===1){
+      e.preventDefault(); panActive=true; stage.classList.add('panning'); lastX=e.clientX; lastY=e.clientY; stage.setPointerCapture?.(e.pointerId); return;
     }
-
-    function populateChildren(principalId, ul){
-      ul.innerHTML='';
-      const seconds=neighborsOf(principalId).map(id=>world.querySelector(`[data-id="${id}"]`)).filter(Boolean).filter(isSecondaryNode);
-      if(seconds.length===0){ const li=document.createElement('li'); li.textContent='Aucun cercle secondaire'; li.style.color='var(--muted)'; li.style.borderStyle='dashed'; ul.appendChild(li); return; }
-      seconds.forEach(n=>{ const li=document.createElement('li'); li.textContent=n.querySelector('.label')?.textContent || n.dataset.id; li.addEventListener('click',()=>{ setCurrentNode(n,{fromMenu1:true}); n.classList.add('pulse'); setTimeout(()=>n.classList.remove('pulse'),800); }); ul.appendChild(li); });
+    if(e.button===0 && !wiring.active && !e.target.closest('.node') && !menu.contains(e.target) && !menuHeart.contains(e.target) && !actionsPanel.contains(e.target) && !document.getElementById('sidebar').contains(e.target)){
+      if(!menu2Locked){ world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected')); currentNode=null; enableActionPanel(false); showActionsPanel(false); }
     }
-    function refreshSidebar(){
-      principalList.innerHTML='';
-      const principals=Array.from(world.querySelectorAll('.node')).filter(isPrincipalNode);
-      principals.forEach(n=>{
-        const wrap=document.createElement('div');
-        const btn=document.createElement('button'); btn.className='side-item'; btn.type='button';
-        btn.textContent=n.querySelector('.label')?.textContent||n.dataset.id;
-        stylePrincipalButtonFromNode(btn, n);
-        const ul=document.createElement('ul'); ul.className='child-list'; ul.style.display='none';
-        btn.addEventListener('click',()=>{ setCurrentNode(n,{fromMenu1:true}); if(ul.style.display==='none'){ populateChildren(n.dataset.id,ul); ul.style.display='block'; } else { ul.style.display='none'; } });
-        wrap.appendChild(btn); wrap.appendChild(ul); principalList.appendChild(wrap);
+    if(e.button===0 && wiring.active && !e.target.closest('.node')) stopWiring();
+  });
+  stage.addEventListener('pointermove',(e)=>{
+    if(panActive){ const dx=e.clientX-lastX, dy=e.clientY-lastY; camera.x+=dx; camera.y+=dy; applyCamera(); lastX=e.clientX; lastY=e.clientY; }
+    if(wiring.active && wiring.source && wiring.ghost){
+      const {wx,wy}=pointerToWorld(e); wiring.ghost.setAttribute('x2',wx); wiring.ghost.setAttribute('y2',wy);
+    }
+  });
+  function endPan(e){ if(panActive){ panActive=false; stage.classList.remove('panning'); stage.releasePointerCapture?.(e.pointerId); } }
+  stage.addEventListener('pointerup',endPan);
+  stage.addEventListener('pointercancel',endPan);
+})();
+
+/* Zoom */
+stage.addEventListener('wheel',(e)=>{
+  if(!(e.ctrlKey||e.metaKey)) return;
+  e.preventDefault();
+  const sr=stageRect(); const mx=e.clientX-sr.left; const my=e.clientY-sr.top;
+  const wx=(mx-camera.x)/camera.z; const wy=(my-camera.y)/camera.z;
+  const factor=Math.exp(-e.deltaY*0.001); const zNew=Math.min(Math.max(camera.z*factor,0.5),2.0);
+  camera.x=mx-wx*zNew; camera.y=my-wy*zNew; camera.z=zNew; applyCamera();
+},{passive:false});
+
+/* Wiring */
+function startWiring(source){
+  if(!wiring.active){ wiring.active=true; wireModeBtn.classList.add('active'); }
+  wiring.source=source;
+  if(wiring.ghost) wiring.ghost.remove();
+  const c=centerInWorld(source);
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('stroke','#7dd3fc'); line.setAttribute('stroke-width','2'); line.setAttribute('stroke-linecap','round'); line.setAttribute('stroke-dasharray','6 6');
+  line.setAttribute('x1',c.x); line.setAttribute('y1',c.y); line.setAttribute('x2',c.x); line.setAttribute('y2',c.y);
+  svg.appendChild(line); wiring.ghost=line;
+  world.querySelectorAll('.node').forEach(n=>{ if(n===source){ n.classList.add('wire-source'); } else { n.classList.add('connectable'); } });
+}
+function stopWiring(){
+  wiring.active=false; wireModeBtn.classList.remove('active');
+  if(wiring.ghost){ wiring.ghost.remove(); wiring.ghost=null; }
+  wiring.source=null;
+  world.querySelectorAll('.node.wire-source').forEach(n=>n.classList.remove('wire-source'));
+  world.querySelectorAll('.node.connectable').forEach(n=>n.classList.remove('connectable'));
+}
+function attemptConnect(target){
+  if(!wiring.source||target===wiring.source){ stopWiring(); return; }
+  const a=wiring.source,b=target;
+  if(!findLine(a.dataset.id,b.dataset.id)) createLine(a,b);
+  saveState(); refreshSidebar(); stopWiring();
+}
+wireModeBtn.addEventListener('click',()=>{ if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); }});
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='c'||e.key==='C'){ if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); } }
+  if(e.key==='Escape'){ if(wiring.active) stopWiring(); closeMenu(menu); closeMenu(menuHeart); }
+});
+
+/* Drag */
+function enableDrag(node){
+  if(node._dragEnabled) return;
+  let offsetXw=0, offsetYw=0, dragging=false, prevLeft=0, prevTop=0;
+  node.addEventListener('pointerdown',(e)=>{
+    if(e.button!==0) return;
+    if(wiring.active){
+      e.preventDefault(); e.stopPropagation();
+      if(!wiring.source){ setCurrentNode(node,{preserveMenu2:true}); startWiring(node); }
+      else{ attemptConnect(node); }
+      return;
+    }
+    setCurrentNode(node,{preserveMenu2:true}); closeMenu(menu); closeMenu(menuHeart);
+    node.setPointerCapture(e.pointerId);
+    const rect=node.getBoundingClientRect();
+    offsetXw=(e.clientX-rect.left)/camera.z; offsetYw=(e.clientY-rect.top)/camera.z;
+    prevLeft=parseFloat(node.style.left)||0; prevTop=parseFloat(node.style.top)||0;
+    dragging=true;
+  });
+  node.addEventListener('pointermove',(ev)=>{
+    if(!dragging) return;
+    const sr=stageRect(); const worldX=(ev.clientX-sr.left-camera.x)/camera.z; const worldY=(ev.clientY-sr.top-camera.y)/camera.z;
+    const newLeft=worldX-offsetXw; const newTop=worldY-offsetYw;
+    const dx=newLeft-prevLeft; const dy=newTop-prevTop;
+    node.style.left=newLeft+'px'; node.style.top=newTop+'px'; updateLinesFor(node); fitLabelToNode(node);
+    if(isPrincipalNode(node) && (dx!==0||dy!==0)){
+      secondariesUniqueToPrincipal(node).forEach(sec=>{
+        sec.style.left=((parseFloat(sec.style.left)||0)+dx)+'px';
+        sec.style.top=((parseFloat(sec.style.top)||0)+dy)+'px';
+        updateLinesFor(sec);
       });
     }
-
-    /* Panneau d’actions */
-    actAddPrincipal.addEventListener('click',()=>{ if(!currentNode) return; addNodeNear(currentNode); });
-    actAddSecondary.addEventListener('click',()=>{ if(!currentNode) return; addNodeNearScaled(currentNode); });
-    actWire.addEventListener('click',()=>{ if(!currentNode) return; startWiring(currentNode); });
-    actCenter.addEventListener('click',()=> centerOnCurrent());
-    actDelete.addEventListener('click',()=>{
-      if(!currentNode) return;
-      if(currentNode.id==='main-node'||currentNode.dataset.id==='node-0'){ alert('Le cercle principal ne peut pas être supprimé.'); return; }
-      qLines().forEach(l=>{ if(l.dataset.from===currentNode.dataset.id||l.dataset.to===currentNode.dataset.id) l.remove(); });
-      currentNode.remove(); currentNode=null; enableActionPanel(false); saveState(); showActionsPanel(false); menu2Locked=false; refreshSidebar();
-    });
-
-    // Titre direct (Menu 2)
-    function applyTitleFromInput(){
-      if(!currentNode) return;
-      const v = (titleInput2.value||'').trim();
-      const label=currentNode.querySelector('.label');
-      label.textContent = v;
-      fitLabelToNode(currentNode);
-      saveState();
-      selectedInfo.textContent = v || currentNode.dataset.id;
-      refreshSidebar();
+    if(isSecondaryNode(node)){
+      const {node:pri, dist}=nearestPrincipal(node);
+      if(snapHint && snapHint!==pri) snapHint.classList.remove('snap-target');
+      if(pri && dist<=SNAP_RANGE){ pri.classList.add('snap-target'); snapHint=pri; } else { if(snapHint){ snapHint.classList.remove('snap-target'); snapHint=null; } }
     }
-    titleInput2.addEventListener('change', applyTitleFromInput);
-    titleInput2.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); applyTitleFromInput(); titleInput2.blur(); } });
-
-    // Menu 2 style/color controls
-    colorPicker2.addEventListener('input',(e)=> applyColor(e.target.value));
-    fontSelect2.addEventListener('change',(e)=> setFamily(e.target.value));
-    fontSizeMax2.addEventListener('input',(e)=> setMax(e.target.value));
-    boldBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(boldBtn2); currentNode.querySelector('.label').style.fontWeight = on?'700':'400'; fitLabelToNode(currentNode); saveState(); });
-    italicBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(italicBtn2); currentNode.querySelector('.label').style.fontStyle = on?'italic':'normal'; fitLabelToNode(currentNode); saveState(); });
-    underlineBtn2.addEventListener('click',(e)=>{ e.stopPropagation(); const on=togglePressed(underlineBtn2); currentNode.querySelector('.label').style.textDecoration = on?'underline':'none'; fitLabelToNode(currentNode); saveState(); });
-
-    /* Export/Import/Reset */
-    exportBtn.addEventListener('click',()=>{ const data=buildState(); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='workspace.json'; a.click(); URL.revokeObjectURL(url); });
-    importBtn.addEventListener('click',()=> fileInput.click());
-    fileInput.addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; try{ const text=await f.text(); restoreState(JSON.parse(text)); } catch{ alert('Fichier invalide.'); } finally { fileInput.value=''; } });
-    resetBtn.addEventListener('click',()=>{ if(!confirm("Réinitialiser l'espace de travail ?")) return; localStorage.removeItem('workspaceState'); localStorage.removeItem('sphaira:workspaceState:v1'); qLines().forEach(l=>l.remove()); world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); }); mainNode.style.left='calc(50% - 55px)'; mainNode.style.top='calc(50% - 55px)'; mainNode.querySelector('.label').textContent='Cercle principal'; mainNode.style.backgroundColor='var(--primary)'; mainNode.style.setProperty('--node','var(--primary)'); idCounter=1; camera.x=camera.y=0; camera.z=1; applyCamera(); mainNode._tasks=[]; saveState(); updateAllLines(); fitLabelToNode(mainNode); showActionsPanel(false); menu2Locked=false; refreshSidebar(); });
-
-    /* Pan & sélection contrôlée */
-    (function setupStagePan(){
-      let panActive=false, lastX=0,lastY=0;
-      stage.addEventListener('pointerdown',(e)=>{
-        if(e.button===1){
-          e.preventDefault();
-          panActive=true; stage.classList.add('panning');
-          lastX=e.clientX; lastY=e.clientY;
-          stage.setPointerCapture?.(e.pointerId);
-          return;
-        }
-        if(e.button===0 && !wiring.active && !e.target.closest('.node') && !menu.contains(e.target) && !menuHeart.contains(e.target) && !actionsPanel.contains(e.target) && !document.getElementById('sidebar').contains(e.target)){
-          if(menu2Locked){
-            // keep panel
-          }else{
-            world.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
-            currentNode=null; enableActionPanel(false); showActionsPanel(false);
-          }
-        }
-        if(e.button===0 && wiring.active && !e.target.closest('.node')) stopWiring();
-      });
-      stage.addEventListener('pointermove',(e)=>{
-        if(panActive){
-          const dx=e.clientX-lastX, dy=e.clientY-lastY; camera.x+=dx; camera.y+=dy; applyCamera(); lastX=e.clientX; lastY=e.clientY;
-        }
-        if(wiring.active && wiring.source && wiring.ghost){
-          const {wx,wy} = pointerToWorld(e);
-          wiring.ghost.setAttribute('x2', wx); wiring.ghost.setAttribute('y2', wy);
-        }
-      });
-      function endPan(e){
-        if(panActive){ panActive=false; stage.classList.remove('panning'); stage.releasePointerCapture?.(e.pointerId); }
-      }
-      stage.addEventListener('pointerup',endPan);
-      stage.addEventListener('pointercancel',endPan);
-    })();
-
-    /* Zoom (Ctrl/⌘ + molette) */
-    stage.addEventListener('wheel',(e)=>{
-      if(!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      const sr=stageRect();
-      const mx = e.clientX - sr.left;
-      const my = e.clientY - sr.top;
-      const wx = (mx - camera.x)/camera.z;
-      const wy = (my - camera.y)/camera.z;
-      const factor = Math.exp(-e.deltaY * 0.001);
-      const zNew = (Math.min(Math.max(camera.z * factor, 0.5), 2.0));
-      camera.x = mx - wx * zNew;
-      camera.y = my - wy * zNew;
-      camera.z = zNew;
-      applyCamera();
-    }, { passive:false });
-
-    /* ====== Mode CÂBLAGE ====== */
-    function startWiring(source){
-      if(!wiring.active){ wiring.active=true; wireModeBtn.classList.add('active'); }
-      wiring.source = source;
-      if(wiring.ghost) wiring.ghost.remove();
-      const c = centerInWorld(source);
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('stroke','#7dd3fc'); line.setAttribute('stroke-width','2'); line.setAttribute('stroke-linecap','round'); line.setAttribute('stroke-dasharray','6 6');
-      line.setAttribute('x1', c.x); line.setAttribute('y1', c.y); line.setAttribute('x2', c.x); line.setAttribute('y2', c.y);
-      svg.appendChild(line); wiring.ghost=line;
-      world.querySelectorAll('.node').forEach(n=>{ if(n===source){ n.classList.add('wire-source'); } else { n.classList.add('connectable'); } });
+    prevLeft=newLeft; prevTop=newTop;
+  });
+  node.addEventListener('pointerup',(e)=>{
+    if(!dragging) return;
+    dragging=false; node.releasePointerCapture(e.pointerId);
+    if(isSecondaryNode(node)){
+      const {node:pri, dist}=nearestPrincipal(node);
+      if(pri && dist<=SNAP_RANGE){ snapSecondaryToPrincipal(node,pri); ensureEdgeExists(pri,node); }
+      if(snapHint){ snapHint.classList.remove('snap-target'); snapHint=null; }
     }
-    function stopWiring(){
-      wiring.active=false; wireModeBtn.classList.remove('active');
-      if(wiring.ghost){ wiring.ghost.remove(); wiring.ghost=null; }
-      wiring.source=null;
-      world.querySelectorAll('.node.wire-source').forEach(n=>n.classList.remove('wire-source'));
-      world.querySelectorAll('.node.connectable').forEach(n=>n.classList.remove('connectable'));
-    }
-    function attemptConnect(target){
-      if(!wiring.source || target===wiring.source){ stopWiring(); return; }
-      const a=wiring.source, b=target;
-      if(!findLine(a.dataset.id,b.dataset.id)) createLine(a,b);
-      saveState(); refreshSidebar();
-      stopWiring();
-    }
+    saveState();
+  });
+  node.addEventListener('contextmenu',(e)=>{
+    e.preventDefault(); setCurrentNode(node,{preserveMenu2:true});
+    if(node.id==='main-node') openMenuAt(menuHeart, e, node); else openMenuAt(menu, e, node);
+  });
+  node._dragEnabled=true;
+  updateUrlBadge(node); updateTaskBadge(node); updateObjectiveBadge(node);
+}
 
-    // Toolbar & clavier
-    wireModeBtn.addEventListener('click',()=>{
-      if(wiring.active) stopWiring();
-      else { wiring.active=true; wireModeBtn.classList.add('active'); }
-    });
-    document.addEventListener('keydown',(e)=>{
-      if(e.key==='c' || e.key==='C'){
-        if(wiring.active) stopWiring(); else { wiring.active=true; wireModeBtn.classList.add('active'); }
-      }
-      if(e.key==='Escape'){ if(wiring.active) stopWiring(); closeMenu(menu); closeMenu(menuHeart); }
-    });
+/* Add nodes */
+function addNodeNear(target){
+  const sr=stageRect(); const tRect=target.getBoundingClientRect();
+  const tW=target.offsetWidth, tH=target.offsetHeight;
+  const left=((tRect.left - sr.left - camera.x)/camera.z)+tW+30;
+  const top=((tRect.top - sr.top - camera.y)/camera.z)+tH+30;
+  const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
+  const base=toHex(getComputedStyle(target).backgroundColor)||'#00EAFF';
+  Object.assign(node.style,{left:left+'px',top:top+'px',width:BIG_SIZE+'px',height:BIG_SIZE+'px',backgroundColor:base});
+  node.style.setProperty('--node',base);
+  node.innerHTML='<span class="label">Cercle principal</span>'; node._tasks=[]; node._objectives=[];
+  world.appendChild(node); enableDrag(node); fitLabelToNode(node); createLine(target,node); setCurrentNode(node,{preserveMenu2:true}); saveState(); return node;
+}
+function addNodeNearScaled(target){
+  const sr=stageRect(); const tRect=target.getBoundingClientRect();
+  const tW=target.offsetWidth, tH=target.offsetHeight;
+  const left=((tRect.left - sr.left - camera.x)/camera.z)+tW+30;
+  const top=((tRect.top - sr.top - camera.y)/camera.z)+tH+30;
+  const node=document.createElement('div'); node.className='node'; node.dataset.id=`node-${idCounter++}`;
+  const base=toHex(getComputedStyle(target).backgroundColor)||'#00EAFF';
+  Object.assign(node.style,{left:left+'px',top:top+'px',width:SMALL_SIZE+'px',height:SMALL_SIZE+'px',backgroundColor:base});
+  node.style.setProperty('--node',base);
+  node.innerHTML='<span class="label">Cercle secondaire</span>'; node._tasks=[]; node._objectives=[];
+  world.appendChild(node); enableDrag(node); fitLabelToNode(node); createLine(target,node); setCurrentNode(node,{preserveMenu2:true}); saveState(); return node;
+}
 
-    /* Resize */
-    window.addEventListener('resize',()=>{ updateAllLines(); fitAllLabels(); });
+/* Keyboard */
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='c'||e.key==='C'){ /* handled above */ }
+});
 
-    /* Persistence */
-    function buildState(){
-      const nodes=Array.from(world.querySelectorAll('.node')).map(n=>({
-        id:n.dataset.id, left:n.style.left||'0px', top:n.style.top||'0px',
-        w:parseFloat(getComputedStyle(n).width)||110, h:parseFloat(getComputedStyle(n).height)||110,
-        text:n.querySelector('.label')?.textContent||'',
-        color: toHex(n.style.backgroundColor || getComputedStyle(n).backgroundColor) || '#00EAFF',
-        fontFamily:n.querySelector('.label')?.style.fontFamily||'',
-        fontWeight:n.querySelector('.label')?.style.fontWeight||'',
-        fontStyle:n.querySelector('.label')?.style.fontStyle||'',
-        textDecoration:n.querySelector('.label')?.style.textDecoration||'',
-        maxFont: n.dataset.maxFont ? parseFloat(n.dataset.maxFont) : null,
-        url: n.dataset.url || '',
-        tasks: (n._tasks||[]).map(t=>({id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||''}))
-      }));
-      const edges=Array.from(qLines()).map(l=>({from:l.dataset.from,to:l.dataset.to}));
-      return { idCounter, nodes, edges, camera };
-    }
-    function saveState(){
-      const data=buildState();
-      localStorage.setItem('workspaceState', JSON.stringify(data));
-      /* Patch compatibilité ORIS : double clé */
-      localStorage.setItem('sphaira:workspaceState:v1', JSON.stringify(data));
-      refreshSidebar();
-    }
-    function restoreState(data){
-      qLines().forEach(l=>l.remove());
-      world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); });
-      idCounter=data?.idCounter ?? 1;
-      if(data?.camera){ camera.x=data.camera.x||0; camera.y=data.camera.y||0; camera.z=data.camera.z||1; applyCamera(); }
-      const byId={};
-      (data?.nodes||[]).forEach(n=>{
-        let node;
-        if(n.id==='node-0'){ node=mainNode; }
-        else{ node=document.createElement('div'); node.className='node'; node.dataset.id=n.id; world.appendChild(node); enableDrag(node); }
-        node.style.left=n.left; node.style.top=n.top;
-        if(n.w) node.style.width=n.w+'px';
-        if(n.h) node.style.height=n.h+'px';
-        const col=normalizeHex(n.color)||toHex(n.color)||'#00EAFF'; node.style.backgroundColor=col; node.style.setProperty('--node', col);
-        node.innerHTML='<span class="label"></span>'; const labelEl=node.querySelector('.label');
-        labelEl.textContent=n.text||''; if(n.fontFamily) labelEl.style.fontFamily=n.fontFamily; if(n.fontWeight) labelEl.style.fontWeight=n.fontWeight; if(n.fontStyle) labelEl.style.fontStyle=n.fontStyle; if(n.textDecoration) labelEl.style.textDecoration=n.textDecoration; if(n.maxFont) node.dataset.maxFont=String(n.maxFont);
-        if(n.url){ node.dataset.url = n.url; }
-        node._tasks = Array.isArray(n.tasks) ? n.tasks.map(t=>({ id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'' })) : [];
-        fitLabelToNode(node); updateUrlBadge(node); updateTaskBadge(node); byId[n.id]=node;
-      });
-      if(!byId['node-0']){ mainNode.dataset.id='node-0'; mainNode.querySelector('.label').textContent = 'Cercle principal'; byId['node-0']=mainNode; }
-      enableDrag(mainNode); fitLabelToNode(mainNode);
-      (data?.edges||[]).forEach(e=>{ if(byId[e.from]&&byId[e.to]) { const l=createLine(byId[e.from],byId[e.to]); styleLineByNodes(l); } });
-      updateAllLines(); refreshSidebar(); saveState(); showActionsPanel(false); menu2Locked=false;
-    }
+/* Resize */
+window.addEventListener('resize',()=>{ updateAllLines(); fitAllLabels(); });
 
-    /* Init */
-    enableDrag(mainNode); mainNode._tasks = mainNode._tasks || []; fitLabelToNode(mainNode); refreshSidebar(); enableActionPanel(false); showActionsPanel(false); applyCamera();
+/* Format */
+function fmtRange(start,end){
+  const s=start?start:null; const e=end?end:null;
+  if(!s && !e) return '';
+  if(s && e) return `Du ${s} au ${e}`;
+  if(s && !e) return `À partir du ${s}`;
+  if(!s && e) return `Jusqu'au ${e}`;
+}
+
+/* ====== Persistence ====== */
+function buildState(){
+  const nodes=Array.from(world.querySelectorAll('.node')).map(n=>({
+    id:n.dataset.id, left:n.style.left||'0px', top:n.style.top||'0px',
+    w:parseFloat(getComputedStyle(n).width)||110, h:parseFloat(getComputedStyle(n).height)||110,
+    text:n.querySelector('.label')?.textContent||'',
+    color: toHex(n.style.backgroundColor || getComputedStyle(n).backgroundColor) || '#00EAFF',
+    fontFamily:n.querySelector('.label')?.style.fontFamily||'',
+    fontWeight:n.querySelector('.label')?.style.fontWeight||'',
+    fontStyle:n.querySelector('.label')?.style.fontStyle||'',
+    textDecoration:n.querySelector('.label')?.style.textDecoration||'',
+    maxFont: n.dataset.maxFont ? parseFloat(n.dataset.maxFont) : null,
+    url: n.dataset.url || '',
+    tasks: (n._tasks||[]).map(t=>({id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done})),
+    objectives: (n._objectives||[]).map(o=>({id:o.id, title:o.title, desc:o.desc, due:o.due||'', taskIds:[...(o.taskIds||[])], completed:!!o.completed, completedAt:o.completedAt||null}))
+  }));
+  const edges=Array.from(qLines()).map(l=>({from:l.dataset.from,to:l.dataset.to}));
+  return { idCounter, nodes, edges, camera };
+}
+function saveState(){
+  const data=buildState();
+  localStorage.setItem('workspaceState', JSON.stringify(data));
+  localStorage.setItem('sphaira:workspaceState:v1', JSON.stringify(data)); /* compat ORIS */
+  refreshSidebar();
+}
+function restoreState(data){
+  qLines().forEach(l=>l.remove());
+  world.querySelectorAll('.node').forEach(n=>{ if(n!==mainNode) n.remove(); });
+  idCounter=data?.idCounter ?? 1;
+  if(data?.camera){ camera.x=data.camera.x||0; camera.y=data.camera.y||0; camera.z=data.camera.z||1; applyCamera(); }
+  const byId={};
+  (data?.nodes||[]).forEach(n=>{
+    let node;
+    if(n.id==='node-0'){ node=mainNode; }
+    else{ node=document.createElement('div'); node.className='node'; node.dataset.id=n.id; world.appendChild(node); enableDrag(node); }
+    node.style.left=n.left; node.style.top=n.top;
+    if(n.w) node.style.width=n.w+'px'; if(n.h) node.style.height=n.h+'px';
+    const col=normalizeHex(n.color)||toHex(n.color)||'#00EAFF'; node.style.backgroundColor=col; node.style.setProperty('--node',col);
+    node.innerHTML='<span class="label"></span>'; const labelEl=node.querySelector('.label');
+    labelEl.textContent=n.text||''; if(n.fontFamily) labelEl.style.fontFamily=n.fontFamily; if(n.fontWeight) labelEl.style.fontWeight=n.fontWeight; if(n.fontStyle) labelEl.style.fontStyle=n.fontStyle; if(n.textDecoration) labelEl.style.textDecoration=n.textDecoration; if(n.maxFont) node.dataset.maxFont=String(n.maxFont);
+    if(n.url){ node.dataset.url=n.url; }
+    node._tasks=Array.isArray(n.tasks) ? n.tasks.map(t=>({ id:t.id, title:t.title, desc:t.desc, start:t.start||'', end:t.end||'', done: !!t.done })) : [];
+    node._objectives=Array.isArray(n.objectives) ? n.objectives.map(o=>({ id:o.id, title:o.title, desc:o.desc, due:o.due||'', taskIds:[...(o.taskIds||[])], completed: !!o.completed, completedAt: o.completedAt||null })) : [];
+    fitLabelToNode(node); updateUrlBadge(node); updateTaskBadge(node); updateObjectiveBadge(node); byId[n.id]=node;
+  });
+  if(!byId['node-0']){ mainNode.dataset.id='node-0'; mainNode.querySelector('.label').textContent='Cercle principal'; byId['node-0']=mainNode; }
+  enableDrag(mainNode); fitLabelToNode(mainNode);
+  (data?.edges||[]).forEach(e=>{ if(byId[e.from]&&byId[e.to]) { const l=createLine(byId[e.from],byId[e.to]); styleLineByNodes(l); } });
+  // recompute objectives after load (legacy data)
+  Object.values(byId).forEach(n=>recomputeAllObjectives(n));
+  updateAllLines(); refreshSidebar(); saveState(); showActionsPanel(false); menu2Locked=false;
+}
+
+/* Init */
+enableDrag(mainNode); mainNode._tasks = mainNode._tasks||[]; mainNode._objectives = mainNode._objectives||[];
+fitLabelToNode(mainNode); refreshSidebar(); enableActionPanel(false); showActionsPanel(false); applyCamera();
     const saved = localStorage.getItem('sphaira:workspaceState:v1') || localStorage.getItem('workspaceState');
     if(saved){ try{ restoreState(JSON.parse(saved)); }catch{} } else { saveState(); }
   </script>
