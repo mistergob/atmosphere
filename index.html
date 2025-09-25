@@ -965,6 +965,7 @@ function renderNodeTasksList(){
       return o ? o.title||'Objectif' : null;
     }).filter(Boolean).map(escapeHtml);
     const objectivesHtml = objectiveNames.length ? `<div><small>Objectifs : ${objectiveNames.join(', ')}</small></div>` : '';
+    const descHtml = t.desc ? `<div class="task-desc" hidden style="margin-top:6px">${escapeHtml(t.desc)}</div>` : '';
     div.innerHTML=`
       <div style="display:flex; align-items:flex-start; gap:10px; justify-content:space-between;">
         <div class="task-main" style="flex:1;">
@@ -973,8 +974,8 @@ function renderNodeTasksList(){
             <strong>${titleHtml}</strong>
           </label>
           ${t.start || t.end ? `<div><small>${escapeHtml(fmtRange(t.start,t.end))}</small></div>` : ''}
-          ${t.desc ? `<div style="margin-top:6px">${escapeHtml(t.desc)}</div>` : ''}
           ${objectivesHtml}
+          ${descHtml}
         </div>
         <div style="display:flex; gap:6px;">
           <button class="icon-btn small btn-edit" title="Modifier">✏️</button>
@@ -991,6 +992,14 @@ function renderNodeTasksList(){
       if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
       if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
     });
+    const descEl=div.querySelector('.task-desc');
+    if(descEl){
+      const main=div.querySelector('.task-main');
+      main.addEventListener('click',(event)=>{
+        if(event.target.closest('.task-done')||event.target.closest('.btn-edit')||event.target.closest('.btn-del')) return;
+        descEl.hidden=!descEl.hidden;
+      });
+    }
     nodeTasksList.appendChild(div);
   });
 }
