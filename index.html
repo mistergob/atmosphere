@@ -261,6 +261,14 @@
   .btn-validate:hover{ transform: translateY(-1px); filter: var(--glow); }
   .btn-validate.done{ opacity:.5; cursor:default; filter:none; transform:none; }
   .task-meta{display:flex;flex-wrap:wrap;gap:8px}
+  .task-inline-control{
+    display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted);
+  }
+  .task-inline-control label{font-size:12px;color:inherit}
+  .task-inline-control select{
+    flex:0 1 auto;min-width:160px;height:28px;border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;padding:0 12px;background:rgba(255,255,255,.04);color:var(--text);
+  }
   .badge{
     display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
     background:rgba(0,234,255,.12);color:var(--text);font-size:12px;font-weight:500;letter-spacing:.03em;
@@ -998,6 +1006,7 @@ function renderNodeTasksList(){
   const node=taskEditorNode; nodeTasksList.innerHTML='';
   if(node) ensureObjArrays(node);
   const tasks=(node && node._tasks)?node._tasks:[];
+  const objectives=(node && node._objectives)?node._objectives:[];
   if(tasks.length===0){
     const empty=document.createElement('div'); empty.className='task-item'; empty.textContent='Aucune tâche pour ce cercle.'; nodeTasksList.appendChild(empty); return;
   }
@@ -1014,6 +1023,15 @@ function renderNodeTasksList(){
     if(t.start || t.end){ metaBadges.push(`<span class="badge badge-date">${escapeHtml(fmtRange(t.start,t.end))}</span>`); }
     objectiveNames.forEach(name=>metaBadges.push(`<span class="badge badge-objective">${name}</span>`));
     const metaHtml=metaBadges.length ? `<div class="task-meta">${metaBadges.join('')}</div>` : '';
+    const objectiveControlHtml = objectives.length ? `
+      <div class="task-inline-control">
+        <label for="taskObj_${t.id}">Objectif :</label>
+        <select id="taskObj_${t.id}" class="task-objective-select" data-task="${t.id}">
+          <option value="">— Aucun objectif —</option>
+          ${(objectives||[]).map(o=>`<option value="${o.id}" ${t.objectiveIds?.includes(o.id)?'selected':''}>${escapeHtml(o.title||'Objectif')}</option>`).join('')}
+        </select>
+      </div>
+    ` : '';
     const descHtml=t.desc ? `
       <div class="task-desc" hidden>${escapeHtml(t.desc)}</div>
       <button type="button" class="task-toggle" aria-expanded="false">Afficher la note</button>
@@ -1033,6 +1051,7 @@ function renderNodeTasksList(){
         </div>
       </div>
       ${metaHtml}
+      ${objectiveControlHtml}
       ${descHtml}
     `;
     div.querySelector('.btn-edit').addEventListener('click',()=>openTaskEditor(node, t.id));
@@ -1058,6 +1077,19 @@ function renderNodeTasksList(){
         descEl.hidden=!next;
         toggleBtn.setAttribute('aria-expanded', next?'true':'false');
         toggleBtn.textContent=next?'Masquer la note':'Afficher la note';
+      });
+    }
+    const objectiveSelect=div.querySelector('.task-objective-select');
+    if(objectiveSelect){
+      objectiveSelect.addEventListener('change',(event)=>{
+        event.stopPropagation();
+        const val=event.target.value;
+        updateTaskOnNode(node, t.id, { objectiveIds: val ? [val] : [] });
+        renderNodeTasksList();
+        renderTaskObjectiveSelect();
+        if(isModalOpen(tasksModal)) renderGlobalTasksList();
+        if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+        if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
       });
     }
     nodeTasksList.appendChild(div);
@@ -1098,6 +1130,7 @@ function renderGlobalTasksList(){
   items.forEach(({node,nodeName,task})=>{
     ensureObjArrays(node);
     const col=toHex(getComputedStyle(node).backgroundColor)||'#00EAFF';
+    const objectives=(node._objectives||[]);
     const wrapper=document.createElement('div'); wrapper.className='task-item';
     const isDone=!!task.done;
     const titleRaw=escapeHtml(task.title);
@@ -1110,6 +1143,15 @@ function renderGlobalTasksList(){
     if(task.start || task.end){ metaBadges.push(`<span class="badge badge-date">${escapeHtml(fmtRange(task.start,task.end))}</span>`); }
     objectiveNames.forEach(name=>metaBadges.push(`<span class="badge badge-objective">${name}</span>`));
     const metaHtml=metaBadges.length ? `<div class="task-meta">${metaBadges.join('')}</div>` : '';
+    const objectiveControlHtml = objectives.length ? `
+      <div class="task-inline-control">
+        <label for="globalTaskObj_${task.id}">Objectif :</label>
+        <select id="globalTaskObj_${task.id}" class="task-objective-select" data-task="${task.id}" data-node="${node.dataset.id}">
+          <option value="">— Aucun objectif —</option>
+          ${objectives.map(o=>`<option value="${o.id}" ${task.objectiveIds?.includes(o.id)?'selected':''}>${escapeHtml(o.title||'Objectif')}</option>`).join('')}
+        </select>
+      </div>
+    ` : '';
     const descHtml=task.desc ? `
       <div class="task-desc" hidden>${escapeHtml(task.desc)}</div>
       <button type="button" class="task-toggle" aria-expanded="false">Afficher la note</button>
@@ -1129,6 +1171,7 @@ function renderGlobalTasksList(){
         </div>
       </div>
       ${metaHtml}
+      ${objectiveControlHtml}
       ${descHtml}
     `;
     const delBtn=wrapper.querySelector('.btn-del');
@@ -1160,6 +1203,18 @@ function renderGlobalTasksList(){
         descEl.hidden=!next;
         toggleBtn.setAttribute('aria-expanded', next?'true':'false');
         toggleBtn.textContent=next?'Masquer la note':'Afficher la note';
+      });
+    }
+    const objectiveSelect=wrapper.querySelector('.task-objective-select');
+    if(objectiveSelect){
+      objectiveSelect.addEventListener('change',(event)=>{
+        event.stopPropagation();
+        const val=event.target.value;
+        updateTaskOnNode(node, task.id, { objectiveIds: val ? [val] : [] });
+        renderGlobalTasksList();
+        if(taskEditorNode===node && isModalOpen(taskEditor)) renderNodeTasksList();
+        if(isModalOpen(objectiveEditor)) renderObjectiveEditor();
+        if(isModalOpen(objectivesModal)) renderGlobalObjectivesList();
       });
     }
     tasksContainer.appendChild(wrapper);
